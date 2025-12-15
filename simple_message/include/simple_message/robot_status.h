@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Software License Agreement (BSD License)
  *
  * Copyright (c) 2011, Southwest Research Institute
@@ -60,7 +60,8 @@ enum RobotMode
   MANUAL = 1, AUTO = 2,
 };
 
-#ifdef ROS
+// remove ROS after Melodic (bw compat for #262)
+#if defined(SIMPLE_MESSAGE_USE_ROS) || defined(ROS)
 int toROSMsgEnum(RobotModes::RobotMode mode);
 #endif
 
@@ -85,7 +86,8 @@ enum TriState
   TS_FALSE = 0,   TS_OFF = 0,  TS_DISABLED = 0,  TS_LOW = 0
 };
 
-#ifdef ROS
+// remove ROS after Melodic (bw compat for #262)
+#if defined(SIMPLE_MESSAGE_USE_ROS) || defined(ROS)
 int toROSMsgEnum(TriStates::TriState state);
 #endif
 
