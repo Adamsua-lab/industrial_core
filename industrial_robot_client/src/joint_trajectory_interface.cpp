@@ -121,7 +121,9 @@ bool JointTrajectoryInterface::init(SmplMsgConnection* connection, const std::ve
       industrial_msgs::srv::CmdJointTrajectory::Response::SharedPtr)>(
         &JointTrajectoryInterface::jointTrajectoryCB), this, std::placeholders::_1, std::placeholders::_2));
   this->sub_joint_trajectory_ = this->node_->create_subscription<trajectory_msgs::msg::JointTrajectory>(
-    "joint_path_command", 0, std::bind(&JointTrajectoryInterface::jointTrajectoryCB, this, std::placeholders::_1));
+    "joint_path_command", 0, std::bind(
+      static_cast<void(JointTrajectoryInterface::*)(const trajectory_msgs::msg::JointTrajectory::SharedPtr)>(
+        &JointTrajectoryInterface::jointTrajectoryCB), this, std::placeholders::_1));
   this->sub_cur_pos_ = this->node_->create_subscription<sensor_msgs::msg::JointState>(
     "joint_states", 1, std::bind(&JointTrajectoryInterface::jointStateCB, this, std::placeholders::_1));
 
