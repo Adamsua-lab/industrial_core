@@ -42,8 +42,8 @@
 #if defined(SIMPLE_MESSAGE_USE_ROS) || defined(ROS)
 // Files below used to translate between ROS messages enums and
 // enums defined in this file
-#include "industrial_msgs/RobotMode.h"
-#include "industrial_msgs/TriState.h"
+#include "industrial_msgs/msg/robot_mode.hpp"
+#include "industrial_msgs/msg/tri_state.hpp"
 #endif
 
 using namespace industrial::shared_types;
@@ -65,15 +65,15 @@ int toROSMsgEnum(RobotModes::RobotMode mode)
   switch (mode)
   {
     case RobotModes::AUTO:
-      return industrial_msgs::RobotMode::AUTO;
+      return industrial_msgs::msg::RobotMode::AUTO;
       break;
     case RobotModes::MANUAL:
-      return industrial_msgs::RobotMode::MANUAL;
+      return industrial_msgs::msg::RobotMode::MANUAL;
       break;
     case RobotModes::UNKNOWN:
-      return industrial_msgs::RobotMode::UNKNOWN;
+      return industrial_msgs::msg::RobotMode::UNKNOWN;
   }
-  return industrial_msgs::RobotMode::UNKNOWN;
+  return industrial_msgs::msg::RobotMode::UNKNOWN;
 
 }
 ;
@@ -94,16 +94,16 @@ int toROSMsgEnum(TriStates::TriState state)
   switch (state)
   {
     case TriStates::TS_UNKNOWN:
-      return industrial_msgs::TriState::UNKNOWN;
+      return industrial_msgs::msg::TriState::UNKNOWN;
       break;
     case TriStates::TS_TRUE:
-      return industrial_msgs::TriState::TRUE;
+      return industrial_msgs::msg::TriState::TRUE;
       break;
     case TriStates::TS_FALSE:
-      return industrial_msgs::TriState::FALSE;
+      return industrial_msgs::msg::TriState::FALSE;
       break;
   }
-  return industrial_msgs::TriState::UNKNOWN;
+  return industrial_msgs::msg::TriState::UNKNOWN;
 
 }
 ;
