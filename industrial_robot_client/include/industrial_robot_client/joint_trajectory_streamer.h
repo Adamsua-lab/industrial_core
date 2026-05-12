@@ -32,7 +32,7 @@
 #ifndef JOINT_TRAJECTORY_STREAMER_H
 #define JOINT_TRAJECTORY_STREAMER_H
 
-#include <boost/thread/thread.hpp>
+#include <thread>
 #include "industrial_robot_client/joint_trajectory_interface.h"
 
 namespace industrial_robot_client
@@ -116,7 +116,7 @@ protected:
 
   void trajectoryStop();
 
-  boost::thread* streaming_thread_;
+  std::thread* streaming_thread_;
   boost::mutex mutex_;
   int current_point_;
   std::vector<JointTrajPtMessage> current_traj_;

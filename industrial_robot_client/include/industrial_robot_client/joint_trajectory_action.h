@@ -126,7 +126,7 @@ private:
   /**
    * \brief Cache of the current active goal
    */
-  rclcpp_action::ServerGoalHandle<control_msgs::action::FollowJointTrajectory>::SharedPtr active_goal_;
+  std::shared_ptr<rclcpp_action::ServerGoalHandle<control_msgs::action::FollowJointTrajectory>> active_goal_;
   /**
    * \brief Cache of the current active trajectory
    */
@@ -198,7 +198,7 @@ private:
    *
    */
   rclcpp_action::CancelResponse cancelCB(
-    rclcpp_action::ServerGoalHandle<control_msgs::action::FollowJointTrajectory>::SharedPtr gh);
+    std::shared_ptr<rclcpp_action::ServerGoalHandle<control_msgs::action::FollowJointTrajectory>> gh);
 
   /**
    * \brief Action server accepted callback method
@@ -207,7 +207,7 @@ private:
    *
    */
   void acceptedCB(
-    rclcpp_action::ServerGoalHandle<control_msgs::action::FollowJointTrajectory>::SharedPtr gh);
+    std::shared_ptr<rclcpp_action::ServerGoalHandle<control_msgs::action::FollowJointTrajectory>> gh);
 
   /**
    * \brief Controller state callback (executed when feedback message

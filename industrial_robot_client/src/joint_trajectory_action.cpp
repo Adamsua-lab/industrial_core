@@ -164,7 +164,7 @@ rclcpp_action::GoalResponse JointTrajectoryAction::goalCB(
 }
 
 rclcpp_action::CancelResponse JointTrajectoryAction::cancelCB(
-  rclcpp_action::ServerGoalHandle<control_msgs::action::FollowJointTrajectory>::SharedPtr gh)
+  std::shared_ptr<rclcpp_action::ServerGoalHandle<control_msgs::action::FollowJointTrajectory>> gh)
 {
   RCLCPP_DEBUG(node_->get_logger(), "Received action cancel request");
   if (active_goal_ == gh)
@@ -186,7 +186,7 @@ rclcpp_action::CancelResponse JointTrajectoryAction::cancelCB(
 }
 
 void JointTrajectoryAction::acceptedCB(
-  rclcpp_action::ServerGoalHandle<control_msgs::action::FollowJointTrajectory>::SharedPtr gh)
+  std::shared_ptr<rclcpp_action::ServerGoalHandle<control_msgs::action::FollowJointTrajectory>> gh)
 {
   // Cancels the currently active goal.
   if (has_active_goal_)
