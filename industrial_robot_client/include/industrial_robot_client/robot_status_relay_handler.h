@@ -33,9 +33,10 @@
 #ifndef ROBOT_STATUS_RELAY_HANDLER_H
 #define ROBOT_STATUS_RELAY_HANDLER_H
 
-#include "ros/ros.h"
+#include <rclcpp/rclcpp.hpp>
 #include "simple_message/message_handler.h"
 #include "simple_message/messages/robot_status_message.h"
+#include "industrial_msgs/msg/robot_status.hpp"
 
 
 namespace industrial_robot_client
@@ -74,8 +75,8 @@ public:
 
 protected:
 
-  ros::Publisher pub_robot_status_;
-  ros::NodeHandle node_;
+  rclcpp::Publisher<industrial_msgs::msg::RobotStatus>::SharedPtr pub_robot_status_;
+  rclcpp::Node::SharedPtr node_;
 
   /**
    * \brief Callback executed upon receiving a robot status message

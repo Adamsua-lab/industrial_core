@@ -86,8 +86,8 @@ template<typename T>
      * @param interp_pt resulting interpolated point
      * @return true if successful, otherwise false.
      */
-    bool interpolatePt(trajectory_msgs::JointTrajectoryPoint & p1, trajectory_msgs::JointTrajectoryPoint & p2,
-                       double time_from_start, trajectory_msgs::JointTrajectoryPoint & interp_pt);
+    bool interpolatePt(trajectory_msgs::msg::JointTrajectoryPoint & p1, trajectory_msgs::msg::JointTrajectoryPoint & p2,
+                       double time_from_start, trajectory_msgs::msg::JointTrajectoryPoint & interp_pt);
 
   private:
     /**

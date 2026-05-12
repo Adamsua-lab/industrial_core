@@ -36,6 +36,7 @@
 #include <map>
 #include <vector>
 #include <string>
+#include <rclcpp/rclcpp.hpp>
 
 namespace industrial_utils
 {
@@ -45,12 +46,13 @@ namespace param
 /**
  * \brief Gets parameter list as vector of strings
  *
+ * \param node rclcpp node for parameter access
  * \param param_name name of list parameter
  * \param list_param populated with parameter value(s)
  *
  * \return true if parameter
  */
-bool getListParam(const std::string param_name, std::vector<std::string> & list_param);
+bool getListParam(rclcpp::Node::SharedPtr node, const std::string param_name, std::vector<std::string> & list_param);
 
 /**
  * \brief Tries to get a set of joint names using several fallback methods:
@@ -58,24 +60,26 @@ bool getListParam(const std::string param_name, std::vector<std::string> & list_
  *          2) try to parse from given URDF data
  *          3) use default joint names: ["joint_1", "joint_2", ..., "joint_6"]
  *
+ * \param[in] node rclcpp node for parameter access
  * \param[in] joint_list_param name of joint-names-list parameter to check
  * \param[in] urdf_param name of URDF description parameter to check
  * \param[out] joint_names list of joint names
  *
  * \return true if parameter found, false if defaults used
  */
-bool getJointNames(const std::string joint_list_param, const std::string urdf_param,
+bool getJointNames(rclcpp::Node::SharedPtr node, const std::string joint_list_param, const std::string urdf_param,
 		           std::vector<std::string> & joint_names);
 
 /**
  * \brief Tries to read joint velocity limits from the specified URDF parameter
  *
+ * \param[in] node rclcpp node for parameter access
  * \param[in] urdf_param_name name of URDF parameter
  * \param[out] velocity_limits map of velocity limits for each URDF joint
  *
  * \return true if parameter found, false if not found
  */
-bool getJointVelocityLimits(const std::string urdf_param_name, std::map<std::string, double> &velocity_limits);
+bool getJointVelocityLimits(rclcpp::Node::SharedPtr node, const std::string urdf_param_name, std::map<std::string, double> &velocity_limits);
 
 } //industrial_utils::param
 } //industrial_utils

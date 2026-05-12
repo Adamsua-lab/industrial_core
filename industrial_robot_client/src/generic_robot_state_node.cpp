@@ -30,13 +30,14 @@
  */
 
 #include "industrial_robot_client/robot_state_interface.h"
+#include <rclcpp/rclcpp.hpp>
 
 using industrial_robot_client::robot_state_interface::RobotStateInterface;
 
 int main(int argc, char** argv)
 {
   // initialize node
-  ros::init(argc, argv, "state_interface");
+  rclcpp::init(argc, argv);
 
   // launch the default Robot State Interface connection/handlers
   RobotStateInterface rsi;
@@ -44,5 +45,6 @@ int main(int argc, char** argv)
   {
     rsi.run();
   }
+  rclcpp::shutdown();
   return 0;
 }

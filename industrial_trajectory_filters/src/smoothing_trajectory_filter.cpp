@@ -39,8 +39,7 @@
 #include <moveit/robot_state/conversions.h>
 #include <stdio.h>
 
-#include <ros/ros.h>
-#include <ros/console.h>
+#include <rclcpp/rclcpp.hpp>
 
 namespace industrial_trajectory_filters
 {

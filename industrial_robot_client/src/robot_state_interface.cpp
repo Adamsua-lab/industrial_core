@@ -31,9 +31,9 @@
 
 #include "industrial_robot_client/robot_state_interface.h"
 #include "industrial_utils/param_utils.h"
+#include <rclcpp/rclcpp.hpp>
 
 using industrial::smpl_msg_connection::SmplMsgConnection;
-using industrial_utils::param::getJointNames;
 namespace StandardSocketPorts = industrial::simple_socket::StandardSocketPorts;
 
 namespace industrial_robot_client
@@ -50,27 +50,30 @@ RobotStateInterface::RobotStateInterface()
 
 bool RobotStateInterface::init(std::string default_ip, int default_port)
 {
+  auto node = rclcpp::Node::make_shared("robot_state_interface_init");
   std::string ip;
   int port;
 
   // override IP/port with ROS params, if available
-  ros::param::param<std::string>("robot_ip_address", ip, default_ip);
-  ros::param::param<int>("~port", port, default_port);
+  node->declare_parameter("robot_ip_address", default_ip);
+  node->declare_parameter("port", default_port);
+  ip = node->get_parameter("robot_ip_address").as_string();
+  port = node->get_parameter("port").as_int();
 
   // check for valid parameter values
   if (ip.empty())
   {
-    ROS_ERROR("No valid robot IP address found.  Please set ROS 'robot_ip_address' param");
+    RCLCPP_ERROR(node->get_logger(), "No valid robot IP address found.  Please set ROS 'robot_ip_address' param");
     return false;
   }
   if (port <= 0)
   {
-    ROS_ERROR("No valid robot IP port found.  Please set ROS '~port' param");
+    RCLCPP_ERROR(node->get_logger(), "No valid robot IP port found.  Please set ROS 'port' param");
     return false;
   }
 
   char* ip_addr = strdup(ip.c_str());  // connection.init() requires "char*", not "const char*"
-  ROS_INFO("Robot state connecting to IP address: '%s:%d'", ip_addr, port);
+  RCLCPP_INFO(node->get_logger(), "Robot state connecting to IP address: '%s:%d'", ip_addr, port);
   default_tcp_connection_.init(ip_addr, port);
   free(ip_addr);
 
@@ -79,10 +82,11 @@ bool RobotStateInterface::init(std::string default_ip, int default_port)
 
 bool RobotStateInterface::init(SmplMsgConnection* connection)
 {
+  auto node = rclcpp::Node::make_shared("robot_state_interface_joints");
   std::vector<std::string> joint_names;
-  if (!getJointNames("controller_joint_names", "robot_description", joint_names))
+  if (!industrial_utils::param::getJointNames(node, "controller_joint_names", "robot_description", joint_names))
   {
-    ROS_ERROR("Failed to initialize joint_names.  Aborting");
+    RCLCPP_ERROR(node->get_logger(), "Failed to initialize joint_names.  Aborting");
     return false;
   }
 

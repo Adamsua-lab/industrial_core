@@ -30,6 +30,7 @@
  */
 
 #include "industrial_robot_client/joint_trajectory_streamer.h"
+#include <rclcpp/rclcpp.hpp>
 
 using industrial::simple_message::SimpleMessage;
 
@@ -43,7 +44,7 @@ bool JointTrajectoryStreamer::init(SmplMsgConnection* connection, const std::vec
 {
   bool rtn = true;
 
-  ROS_INFO("JointTrajectoryStreamer: init");
+  RCLCPP_INFO(rclcpp::get_logger("joint_trajectory_streamer"), "JointTrajectoryStreamer: init");
 
   rtn &= JointTrajectoryInterface::init(connection, joint_names, velocity_limits);
 
@@ -52,7 +53,7 @@ bool JointTrajectoryStreamer::init(SmplMsgConnection* connection, const std::vec
   this->state_ = TransferStates::IDLE;
   this->streaming_thread_ =
       new boost::thread(boost::bind(&JointTrajectoryStreamer::streamingThread, this));
-  ROS_INFO("Unlocking mutex");
+  RCLCPP_INFO(rclcpp::get_logger("joint_trajectory_streamer"), "Unlocking mutex");
   this->mutex_.unlock();
 
   return rtn;
@@ -63,14 +64,14 @@ JointTrajectoryStreamer::~JointTrajectoryStreamer()
   delete this->streaming_thread_;
 }
 
-void JointTrajectoryStreamer::jointTrajectoryCB(const trajectory_msgs::JointTrajectoryConstPtr &msg)
+void JointTrajectoryStreamer::jointTrajectoryCB(const trajectory_msgs::msg::JointTrajectory::SharedPtr msg)
 {
-  ROS_INFO("Receiving joint trajectory message");
+  RCLCPP_INFO(rclcpp::get_logger("joint_trajectory_streamer"), "Receiving joint trajectory message");
 
   // read current state value (should be atomic)
   const auto state = this->state_;
 
-  ROS_DEBUG("Current state is: %d", state);
+  RCLCPP_DEBUG(rclcpp::get_logger("joint_trajectory_streamer"), "Current state is: %d", state);
 
   // always request a stop of current trajectory execution if an empty trajectory
   // is received. We handle this separately from the check below, as the server
@@ -79,7 +80,8 @@ void JointTrajectoryStreamer::jointTrajectoryCB(const trajectory_msgs::JointTraj
   // would be "IDLE", and we'd end up not sending the stop request.
   if (msg->points.empty())
   {
-    ROS_INFO_STREAM("Empty trajectory received while in state: " << TransferStates::to_string(state) << ". Canceling current trajectory.");
+    RCLCPP_INFO(rclcpp::get_logger("joint_trajectory_streamer"), "Empty trajectory received while in state: %s. Canceling current trajectory.",
+      TransferStates::to_string(state).c_str());
     this->mutex_.lock();
     trajectoryStop();
     this->mutex_.unlock();
@@ -91,7 +93,7 @@ void JointTrajectoryStreamer::jointTrajectoryCB(const trajectory_msgs::JointTraj
   // should first be requested, then a new trajectory started.
   if (TransferStates::IDLE != state)
   {
-    ROS_ERROR("Trajectory splicing not yet implemented, stopping current motion.");
+    RCLCPP_ERROR(rclcpp::get_logger("joint_trajectory_streamer"), "Trajectory splicing not yet implemented, stopping current motion.");
     this->mutex_.lock();
     trajectoryStop();
     this->mutex_.unlock();
@@ -109,21 +111,21 @@ void JointTrajectoryStreamer::jointTrajectoryCB(const trajectory_msgs::JointTraj
 
 bool JointTrajectoryStreamer::send_to_robot(const std::vector<JointTrajPtMessage>& messages)
 {
-  ROS_INFO("Loading trajectory, setting state to streaming");
+  RCLCPP_INFO(rclcpp::get_logger("joint_trajectory_streamer"), "Loading trajectory, setting state to streaming");
   this->mutex_.lock();
   {
-    ROS_INFO("Executing trajectory of size: %d", (int)messages.size());
+    RCLCPP_INFO(rclcpp::get_logger("joint_trajectory_streamer"), "Executing trajectory of size: %d", (int)messages.size());
     this->current_traj_ = messages;
     this->current_point_ = 0;
     this->state_ = TransferStates::STREAMING;
-    this->streaming_start_ = ros::Time::now();
+    this->streaming_start_ = rclcpp::Clock().now();
   }
   this->mutex_.unlock();
 
   return true;
 }
 
-bool JointTrajectoryStreamer::trajectory_to_msgs(const trajectory_msgs::JointTrajectoryConstPtr &traj, std::vector<JointTrajPtMessage>* msgs)
+bool JointTrajectoryStreamer::trajectory_to_msgs(const trajectory_msgs::msg::JointTrajectory::SharedPtr &traj, std::vector<JointTrajPtMessage>* msgs)
 {
   // use base function to transform points
   if (!JointTrajectoryInterface::trajectory_to_msgs(traj, msgs))
@@ -132,7 +134,7 @@ bool JointTrajectoryStreamer::trajectory_to_msgs(const trajectory_msgs::JointTra
   // pad trajectory as required for minimum streaming buffer size
   if (!msgs->empty() && (msgs->size() < (size_t)min_buffer_size_))
   {
-    ROS_DEBUG("Padding trajectory: current(%d) => minimum(%d)", (int)msgs->size(), min_buffer_size_);
+    RCLCPP_DEBUG(rclcpp::get_logger("joint_trajectory_streamer"), "Padding trajectory: current(%d) => minimum(%d)", (int)msgs->size(), min_buffer_size_);
     while (msgs->size() < (size_t)min_buffer_size_)
       msgs->push_back(msgs->back());
   }
@@ -146,23 +148,23 @@ void JointTrajectoryStreamer::streamingThread()
   JointTrajPtMessage jtpMsg;
   int connectRetryCount = 1;
 
-  ROS_INFO("Starting joint trajectory streamer thread");
-  while (ros::ok())
+  RCLCPP_INFO(rclcpp::get_logger("joint_trajectory_streamer"), "Starting joint trajectory streamer thread");
+  while (rclcpp::ok())
   {
-    ros::Duration(0.005).sleep();
+    rclcpp::sleep_for(std::chrono::milliseconds(5));
 
     // automatically re-establish connection, if required
     if (connectRetryCount-- > 0)
     {
-      ROS_INFO("Connecting to robot motion server");
+      RCLCPP_INFO(rclcpp::get_logger("joint_trajectory_streamer"), "Connecting to robot motion server");
       this->connection_->makeConnect();
-      ros::Duration(0.250).sleep();  // wait for connection
+      rclcpp::sleep_for(std::chrono::milliseconds(250));  // wait for connection
 
       if (this->connection_->isConnected())
         connectRetryCount = 0;
       else if (connectRetryCount <= 0)
       {
-        ROS_ERROR("Timeout connecting to robot controller.  Send new motion command to retry.");
+        RCLCPP_ERROR(rclcpp::get_logger("joint_trajectory_streamer"), "Timeout connecting to robot controller.  Send new motion command to retry.");
         this->state_ = TransferStates::IDLE;
       }
       continue;
@@ -175,40 +177,40 @@ void JointTrajectoryStreamer::streamingThread()
     switch (this->state_)
     {
       case TransferStates::IDLE:
-        ros::Duration(0.010).sleep();  //  loop while waiting for new trajectory
+        rclcpp::sleep_for(std::chrono::milliseconds(10));  //  loop while waiting for new trajectory
         break;
 
       case TransferStates::STREAMING:
         if (this->current_point_ >= (int)this->current_traj_.size())
         {
-          ROS_INFO("Trajectory streaming complete, setting state to IDLE");
+          RCLCPP_INFO(rclcpp::get_logger("joint_trajectory_streamer"), "Trajectory streaming complete, setting state to IDLE");
           this->state_ = TransferStates::IDLE;
           break;
         }
 
         if (!this->connection_->isConnected())
         {
-          ROS_DEBUG("Robot disconnected.  Attempting reconnect...");
+          RCLCPP_DEBUG(rclcpp::get_logger("joint_trajectory_streamer"), "Robot disconnected.  Attempting reconnect...");
           connectRetryCount = 5;
           break;
         }
 
         jtpMsg = this->current_traj_[this->current_point_];
         jtpMsg.toRequest(msg);
-            
-        ROS_DEBUG("Sending joint trajectory point");
+
+        RCLCPP_DEBUG(rclcpp::get_logger("joint_trajectory_streamer"), "Sending joint trajectory point");
         if (this->connection_->sendAndReceiveMsg(msg, reply, false))
         {
           this->current_point_++;
-          ROS_INFO("Point[%d of %d] sent to controller",
+          RCLCPP_INFO(rclcpp::get_logger("joint_trajectory_streamer"), "Point[%d of %d] sent to controller",
                    this->current_point_, (int)this->current_traj_.size());
         }
         else
-          ROS_WARN("Failed sent joint point, will try again");
+          RCLCPP_WARN(rclcpp::get_logger("joint_trajectory_streamer"), "Failed sent joint point, will try again");
 
         break;
       default:
-        ROS_ERROR("Joint trajectory streamer: unknown state");
+        RCLCPP_ERROR(rclcpp::get_logger("joint_trajectory_streamer"), "Joint trajectory streamer: unknown state");
         this->state_ = TransferStates::IDLE;
         break;
     }
@@ -216,14 +218,14 @@ void JointTrajectoryStreamer::streamingThread()
     this->mutex_.unlock();
   }
 
-  ROS_WARN("Exiting trajectory streamer thread");
+  RCLCPP_WARN(rclcpp::get_logger("joint_trajectory_streamer"), "Exiting trajectory streamer thread");
 }
 
 void JointTrajectoryStreamer::trajectoryStop()
 {
   JointTrajectoryInterface::trajectoryStop();
 
-  ROS_DEBUG("Stop command sent, entering idle mode");
+  RCLCPP_DEBUG(rclcpp::get_logger("joint_trajectory_streamer"), "Stop command sent, entering idle mode");
   this->state_ = TransferStates::IDLE;
 }
 

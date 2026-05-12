@@ -33,9 +33,7 @@
 #define FILTER_BASE_H_
 
 #include <typeinfo>
-#include "ros/assert.h"
-#include "ros/console.h"
-#include "ros/ros.h"
+#include <rclcpp/rclcpp.hpp>
 #include <moveit/planning_request_adapter/planning_request_adapter.h>
 #include <moveit/version.h>
 #include <class_loader/class_loader.hpp>
@@ -129,7 +127,7 @@ template<typename T>
      * @brief Default constructor
      */
     FilterBase() :
-        planning_request_adapter::PlanningRequestAdapter(), nh_("~"), configured_(false), filter_type_("FilterBase"), filter_name_(
+        planning_request_adapter::PlanningRequestAdapter(), configured_(false), filter_type_("FilterBase"), filter_name_(
             "Unimplemented")
     {
 
@@ -179,7 +177,7 @@ template<typename T>
     /**
      * @brief for supporting multiple planning pipelines, set parameter namespace
      */
-    virtual void initialize(const ros::NodeHandle& node_handle) override
+    virtual void initialize(const rclcpp::Node::SharedPtr& node_handle) override
     {
       nh_ = node_handle;
       // configuration is done lazyly later
@@ -212,7 +210,7 @@ template<typename T>
     /**
      * @brief Internal node handle (used for parameter lookup)
      */
-    ros::NodeHandle nh_;
+    rclcpp::Node::SharedPtr nh_;
 
   protected:
 

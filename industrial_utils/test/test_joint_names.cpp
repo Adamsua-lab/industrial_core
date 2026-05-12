@@ -30,15 +30,18 @@
  */
 
 #include "industrial_utils/utils.h"
-#include "ros/ros.h"
+#include <rclcpp/rclcpp.hpp>
+#include <cstdio>
 
 using namespace industrial_utils;
 
-#define ROS_ERROR_EXIT(...) do {ROS_ERROR(__VA_ARGS__); exit(-1); } while (0)
+#define ROS_ERROR_EXIT(...) do {RCLCPP_ERROR(rclcpp::get_logger("test_joint_names"), __VA_ARGS__); exit(-1); } while (0)
 
 // Quick program to test joint-name extraction from URDF
 int main(int argc, char **argv)
 {
+  rclcpp::init(argc, argv);
+
   if (argc != 2)
     ROS_ERROR_EXIT("Usage: test_joint_names my_robot.urdf");
 

@@ -32,13 +32,13 @@
 #ifndef JOINT_TRAJTORY_ACTION_H
 #define JOINT_TRAJTORY_ACTION_H
 
-#include <ros/ros.h>
-#include <actionlib/server/action_server.h>
+#include <rclcpp/rclcpp.hpp>
+#include <rclcpp_action/rclcpp_action.hpp>
 
-#include <trajectory_msgs/JointTrajectory.h>
-#include <control_msgs/FollowJointTrajectoryAction.h>
-#include <control_msgs/FollowJointTrajectoryFeedback.h>
-#include <industrial_msgs/RobotStatus.h>
+#include <trajectory_msgs/msg/joint_trajectory.hpp>
+#include <control_msgs/action/follow_joint_trajectory.hpp>
+#include <control_msgs/msg/follow_joint_trajectory_feedback.hpp>
+#include <industrial_msgs/msg/robot_status.hpp>
 
 namespace industrial_robot_client
 {
@@ -64,11 +64,11 @@ public:
   /**
      * \brief Begin processing messages and publishing topics.
      */
-    void run() { ros::spin(); }
+    void run() { rclcpp::spin(node_); }
 
 private:
 
-  typedef actionlib::ActionServer<control_msgs::FollowJointTrajectoryAction> JointTractoryActionServer;
+  typedef rclcpp_action::Server<control_msgs::action::FollowJointTrajectory> JointTractoryActionServer;
 
   /**
    * \brief Name of this class, for logging namespacing
@@ -78,35 +78,35 @@ private:
   /**
    * \brief Internal ROS node handle
    */
-  ros::NodeHandle node_;
+  rclcpp::Node::SharedPtr node_;
 
   /**
    * \brief Internal action server
    */
-  JointTractoryActionServer action_server_;
+  JointTractoryActionServer::SharedPtr action_server_;
 
   /**
    * \brief Publishes desired trajectory (typically to the robot driver)
    */
-  ros::Publisher pub_trajectory_command_;
+  rclcpp::Publisher<trajectory_msgs::msg::JointTrajectory>::SharedPtr pub_trajectory_command_;
 
   /**
    * \brief Subscribes to trajectory feedback (typically published by the
    * robot driver).
    */
-  ros::Subscriber sub_trajectory_state_;
+  rclcpp::Subscription<control_msgs::msg::FollowJointTrajectoryFeedback>::SharedPtr sub_trajectory_state_;
 
   /**
    * \brief Subscribes to the robot status (typically published by the
    * robot driver).
    */
-  ros::Subscriber sub_robot_status_;
+  rclcpp::Subscription<industrial_msgs::msg::RobotStatus>::SharedPtr sub_robot_status_;
 
   /**
    * \brief Watchdog time used to fail the action request if the robot
    * driver is not responding.
    */
-  ros::Timer watchdog_timer_;
+  rclcpp::TimerBase::SharedPtr watchdog_timer_;
 
   /**
     * \brief Controller was alive during the last watchdog interval
@@ -127,11 +127,11 @@ private:
   /**
    * \brief Cache of the current active goal
    */
-  JointTractoryActionServer::GoalHandle active_goal_;
+  rclcpp_action::ServerGoalHandle<control_msgs::action::FollowJointTrajectory>::SharedPtr active_goal_;
   /**
    * \brief Cache of the current active trajectory
    */
-  trajectory_msgs::JointTrajectory current_traj_;
+  trajectory_msgs::msg::JointTrajectory current_traj_;
 
   /**
    * \brief The default goal joint threshold see(goal_threshold). Unit
@@ -158,18 +158,18 @@ private:
   /**
    * \brief Cache of the last subscribed feedback message
    */
-  control_msgs::FollowJointTrajectoryFeedbackConstPtr last_trajectory_state_;
+  control_msgs::msg::FollowJointTrajectoryFeedback::SharedPtr last_trajectory_state_;
 
   /**
    * \brief Cache of the last subscribed status message
    */
-  industrial_msgs::RobotStatusConstPtr last_robot_status_;
+  industrial_msgs::msg::RobotStatus::SharedPtr last_robot_status_;
 
   /**
    * \brief Time at which to start checking for completion of current
    * goal, if one is active
    */
-  ros::Time time_to_check_;
+  rclcpp::Time time_to_check_;
 
   /**
    * \brief The watchdog period (seconds)
@@ -179,18 +179,18 @@ private:
   /**
    * \brief Watch dog callback, used to detect robot driver failures
    *
-   * \param e time event information
-   *
    */
-  void watchdog(const ros::TimerEvent &e);
+  void watchdog();
 
   /**
    * \brief Action server goal callback method
    *
-   * \param gh goal handle
+   * \param uuid goal uuid
+   * \param goal goal shared pointer
    *
    */
-  void goalCB(JointTractoryActionServer::GoalHandle gh);
+  rclcpp_action::GoalResponse goalCB(const rclcpp_action::GoalUUID & uuid,
+    std::shared_ptr<const control_msgs::action::FollowJointTrajectory::Goal> goal);
 
   /**
    * \brief Action server cancel callback method
@@ -198,8 +198,18 @@ private:
    * \param gh goal handle
    *
    */
+  rclcpp_action::CancelResponse cancelCB(
+    rclcpp_action::ServerGoalHandle<control_msgs::action::FollowJointTrajectory>::SharedPtr gh);
 
-  void cancelCB(JointTractoryActionServer::GoalHandle gh);
+  /**
+   * \brief Action server accepted callback method
+   *
+   * \param gh goal handle
+   *
+   */
+  void acceptedCB(
+    rclcpp_action::ServerGoalHandle<control_msgs::action::FollowJointTrajectory>::SharedPtr gh);
+
   /**
    * \brief Controller state callback (executed when feedback message
    * received)
@@ -207,7 +217,7 @@ private:
    * \param msg joint trajectory feedback message
    *
    */
-  void controllerStateCB(const control_msgs::FollowJointTrajectoryFeedbackConstPtr &msg);
+  void controllerStateCB(const control_msgs::msg::FollowJointTrajectoryFeedback::SharedPtr msg);
 
   /**
    * \brief Controller status callback (executed when robot status
@@ -216,7 +226,7 @@ private:
    * \param msg robot status message
    *
    */
-  void robotStatusCB(const industrial_msgs::RobotStatusConstPtr &msg);
+  void robotStatusCB(const industrial_msgs::msg::RobotStatus::SharedPtr msg);
 
   /**
    * \brief Aborts the current action goal and sends a stop command
@@ -236,8 +246,8 @@ private:
    * \return true if all joints are within goal contraints
    *
    */
-  bool withinGoalConstraints(const control_msgs::FollowJointTrajectoryFeedbackConstPtr &msg,
-                             const trajectory_msgs::JointTrajectory & traj);
+  bool withinGoalConstraints(const control_msgs::msg::FollowJointTrajectoryFeedback::SharedPtr &msg,
+                             const trajectory_msgs::msg::JointTrajectory & traj);
 };
 
 } //joint_trajectory_action

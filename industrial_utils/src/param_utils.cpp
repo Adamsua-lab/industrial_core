@@ -33,55 +33,52 @@
 
 #include "industrial_utils/param_utils.h"
 #include "industrial_utils/utils.h"
-#include "ros/ros.h"
+#include <rclcpp/rclcpp.hpp>
 #include <urdf/urdfdom_compatibility.h>
 
 namespace industrial_utils
 {
 namespace param
 {
-bool getListParam(const std::string param_name, std::vector<std::string> & list_param)
+bool getListParam(rclcpp::Node::SharedPtr node, const std::string param_name, std::vector<std::string> & list_param)
 {
   bool rtn = false;
-  XmlRpc::XmlRpcValue rpc_list;
 
   list_param.clear(); //clear out return value
 
-  rtn = ros::param::get(param_name, rpc_list);
-
-  if (rtn)
+  try
   {
-    rtn = (rpc_list.getType() == XmlRpc::XmlRpcValue::TypeArray);
+    node->declare_parameter(param_name, rclcpp::PARAMETER_STRING_ARRAY);
+  }
+  catch (const rclcpp::exceptions::ParameterAlreadyDeclaredException &)
+  {
+  }
 
-    if (rtn)
+  rclcpp::Parameter param;
+  if (node->get_parameter(param_name, param))
+  {
+    try
     {
-
-      for (int i = 0; i < rpc_list.size(); ++i)
+      list_param = param.as_string_array();
+      for (const auto & s : list_param)
       {
-        rtn = (rpc_list[i].getType() == XmlRpc::XmlRpcValue::TypeString);
-        if (rtn)
-        {
-          ROS_INFO_STREAM("Adding " << rpc_list[i] << " to list parameter");
-          list_param.push_back(static_cast<std::string>(rpc_list[i]));
-        }
-        else
-        {
-          ROS_ERROR_STREAM("List item for: " << param_name << " not of string type");
-        }
+        RCLCPP_INFO(rclcpp::get_logger("industrial_utils"), "Adding %s to list parameter", s.c_str());
       }
+      rtn = true;
     }
-    else
+    catch (const rclcpp::exceptions::InvalidParameterTypeException &)
     {
-      ROS_ERROR_STREAM("Parameter: " << param_name << " not of list type");
+      RCLCPP_ERROR(rclcpp::get_logger("industrial_utils"), "Parameter: %s not of string array type", param_name.c_str());
+      rtn = false;
     }
   }
   else
   {
-    ROS_ERROR_STREAM("Failed to get parameter: " << param_name);
+    RCLCPP_ERROR(rclcpp::get_logger("industrial_utils"), "Failed to get parameter: %s", param_name.c_str());
+    rtn = false;
   }
 
   return rtn;
-
 }
 
 std::string vec2str(const std::vector<std::string> &vec)
@@ -93,47 +90,51 @@ std::string vec2str(const std::vector<std::string> &vec)
   return "[" + s.erase(s.length()-2) + "]";
 }
 
-bool getJointNames(const std::string joint_list_param, const std::string urdf_param,
+bool getJointNames(rclcpp::Node::SharedPtr node, const std::string joint_list_param, const std::string urdf_param,
 		           std::vector<std::string> & joint_names)
 {
   joint_names.clear();
 
   // 1) Try to read explicit list of joint names
-  if (ros::param::has(joint_list_param) && getListParam(joint_list_param, joint_names))
+  if (node->has_parameter(joint_list_param) && getListParam(node, joint_list_param, joint_names))
   {
-    ROS_INFO_STREAM("Found user-specified joint names in '" << joint_list_param << "': " << vec2str(joint_names));
+    RCLCPP_INFO(rclcpp::get_logger("industrial_utils"), "Found user-specified joint names in '%s': %s",
+      joint_list_param.c_str(), vec2str(joint_names).c_str());
     return true;
   }
   else
-    ROS_WARN_STREAM("Unable to find user-specified joint names in '" << joint_list_param << "'");
+    RCLCPP_WARN(rclcpp::get_logger("industrial_utils"), "Unable to find user-specified joint names in '%s'",
+      joint_list_param.c_str());
 
   // 2) Try to find joint names from URDF model
   urdf::Model model;
-  if ( ros::param::has(urdf_param)
-       && model.initParam(urdf_param)
+  if ( node->has_parameter(urdf_param)
+       && model.initString(node->get_parameter(urdf_param).as_string())
        && findChainJointNames(model.getRoot(), true, joint_names) )
   {
-    ROS_INFO_STREAM("Using joint names from URDF: '" << urdf_param << "': " << vec2str(joint_names));
+    RCLCPP_INFO(rclcpp::get_logger("industrial_utils"), "Using joint names from URDF: '%s': %s",
+      urdf_param.c_str(), vec2str(joint_names).c_str());
     return true;
   }
   else
-    ROS_WARN_STREAM("Unable to find URDF joint names in '" << urdf_param << "'");
+    RCLCPP_WARN(rclcpp::get_logger("industrial_utils"), "Unable to find URDF joint names in '%s'",
+      urdf_param.c_str());
 
   // 3) Raise an error
-  ROS_ERROR_STREAM(
-      "Cannot find user-specified joint names. Tried ROS parameter '" << joint_list_param << "'"
-      << " and the URDF in '" << urdf_param << "'.");
+  RCLCPP_ERROR(rclcpp::get_logger("industrial_utils"),
+      "Cannot find user-specified joint names. Tried ROS parameter '%s' and the URDF in '%s'.",
+      joint_list_param.c_str(), urdf_param.c_str());
   return false;
 }
 
-bool getJointVelocityLimits(const std::string urdf_param_name, std::map<std::string, double> &velocity_limits)
+bool getJointVelocityLimits(rclcpp::Node::SharedPtr node, const std::string urdf_param_name, std::map<std::string, double> &velocity_limits)
 {
   urdf::Model model;
   std::map<std::string, urdf::JointSharedPtr >::iterator iter;
 
-  if (!ros::param::has(urdf_param_name) || !model.initParam(urdf_param_name))
+  if (!node->has_parameter(urdf_param_name) || !model.initString(node->get_parameter(urdf_param_name).as_string()))
     return false;
-    
+
   velocity_limits.clear();
   for (iter=model.joints_.begin(); iter!=model.joints_.end(); ++iter)
   {
@@ -142,7 +143,7 @@ bool getJointVelocityLimits(const std::string urdf_param_name, std::map<std::str
     if ( limits && (limits->velocity > 0) )
       velocity_limits.insert(std::pair<std::string,double>(joint_name,limits->velocity));
   }
-  
+
   return true;
 }
 

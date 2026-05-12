@@ -30,18 +30,20 @@
  */
 
 #include "industrial_robot_client/joint_trajectory_streamer.h"
+#include <rclcpp/rclcpp.hpp>
 
 using industrial_robot_client::joint_trajectory_streamer::JointTrajectoryStreamer;
 
 int main(int argc, char** argv)
 {
   // initialize node
-  ros::init(argc, argv, "motion_interface");
+  rclcpp::init(argc, argv);
 
   // launch the default JointTrajectoryStreamer connection/handlers
   JointTrajectoryStreamer motionInterface;
   motionInterface.init();
   motionInterface.run();
 
+  rclcpp::shutdown();
   return 0;
 }

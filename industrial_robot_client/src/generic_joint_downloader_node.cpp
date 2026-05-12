@@ -30,18 +30,20 @@
  */
 
 #include "industrial_robot_client/joint_trajectory_downloader.h"
+#include <rclcpp/rclcpp.hpp>
 
 using industrial_robot_client::joint_trajectory_downloader::JointTrajectoryDownloader;
 
 int main(int argc, char** argv)
 {
   // initialize node
-  ros::init(argc, argv, "motion_interface");
+  rclcpp::init(argc, argv);
 
   // launch the default JointTrajectoryDownloader connection/handlers
   JointTrajectoryDownloader motionInterface;
   motionInterface.init();
   motionInterface.run();
 
+  rclcpp::shutdown();
   return 0;
 }

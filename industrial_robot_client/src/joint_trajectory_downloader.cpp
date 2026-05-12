@@ -30,6 +30,7 @@
  */
 
 #include "industrial_robot_client/joint_trajectory_downloader.h"
+#include <rclcpp/rclcpp.hpp>
 
 namespace industrial_robot_client
 {
@@ -55,22 +56,22 @@ bool JointTrajectoryDownloader::send_to_robot(const std::vector<JointTrajPtMessa
 
   if (!this->connection_->isConnected())
   {
-    ROS_WARN("Attempting robot reconnection");
+    RCLCPP_WARN(rclcpp::get_logger("joint_trajectory_downloader"), "Attempting robot reconnection");
     this->connection_->makeConnect();
   }
 
-  ROS_INFO("Sending trajectory points, size: %d", (int)points.size());
+  RCLCPP_INFO(rclcpp::get_logger("joint_trajectory_downloader"), "Sending trajectory points, size: %d", (int)points.size());
 
   for (int i = 0; i < (int)points.size(); ++i)
   {
-    ROS_DEBUG("Sending joints trajectory point[%d]", i);
+    RCLCPP_DEBUG(rclcpp::get_logger("joint_trajectory_downloader"), "Sending joints trajectory point[%d]", i);
 
     points[i].toTopic(msg);
     bool ptRslt = this->connection_->sendMsg(msg);
     if (ptRslt)
-      ROS_DEBUG("Point[%d] sent to controller", i);
+      RCLCPP_DEBUG(rclcpp::get_logger("joint_trajectory_downloader"), "Point[%d] sent to controller", i);
     else
-      ROS_WARN("Failed sent joint point, skipping point");
+      RCLCPP_WARN(rclcpp::get_logger("joint_trajectory_downloader"), "Failed sent joint point, skipping point");
 
     rslt &= ptRslt;
   }

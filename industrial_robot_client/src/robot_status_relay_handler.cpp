@@ -30,7 +30,7 @@
  */
 
 #include "industrial_robot_client/robot_status_relay_handler.h"
-#include "industrial_msgs/RobotStatus.h"
+#include "industrial_msgs/msg/robot_status.hpp"
 #include "simple_message/log_wrapper.h"
 
 using namespace industrial::shared_types;
@@ -46,7 +46,8 @@ namespace robot_status_relay_handler
 
 bool RobotStatusRelayHandler::init(SmplMsgConnection* connection)
 {
-  this->pub_robot_status_ = this->node_.advertise<industrial_msgs::RobotStatus>("robot_status", 1);
+  this->node_ = rclcpp::Node::make_shared("robot_status_relay_handler");
+  this->pub_robot_status_ = this->node_->create_publisher<industrial_msgs::msg::RobotStatus>("robot_status", 1);
   return init((int)StandardMsgTypes::STATUS, connection);
 }
 
@@ -65,10 +66,10 @@ bool RobotStatusRelayHandler::internalCB(SimpleMessage& in)
 
 bool RobotStatusRelayHandler::internalCB(RobotStatusMessage & in)
 {
-  industrial_msgs::RobotStatus status;
+  industrial_msgs::msg::RobotStatus status;
   bool rtn = true;
 
-  status.header.stamp = ros::Time::now();
+  status.header.stamp = node_->now();
   status.drives_powered.val = TriStates::toROSMsgEnum(in.status_.getDrivesPowered());
   status.e_stopped.val = TriStates::toROSMsgEnum(in.status_.getEStopped());
   status.error_code = in.status_.getErrorCode();
@@ -77,7 +78,7 @@ bool RobotStatusRelayHandler::internalCB(RobotStatusMessage & in)
   status.mode.val = RobotModes::toROSMsgEnum(in.status_.getMode());
   status.motion_possible.val = TriStates::toROSMsgEnum(in.status_.getMotionPossible());
   
-  this->pub_robot_status_.publish(status);
+  this->pub_robot_status_->publish(status);
 
   // Reply back to the controller if the sender requested it.
   if (CommTypes::SERVICE_REQUEST == in.getCommType())

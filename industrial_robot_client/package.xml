@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
-<?xml-model href="http://download.ros.org/schema/package_format2.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
-<package format="2">
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
   <name>industrial_robot_client</name>
   <version>0.7.3</version>
-  <description>industrial robot client contains generic clients for connecting 
+  <description>industrial robot client contains generic clients for connecting
      to industrial robot controllers with servers that adhere to the
      simple message protocol.
   </description>
@@ -13,14 +13,15 @@
   <license>BSD</license>
   <url type="website">http://ros.org/wiki/industrial_robot_client</url>
 
-  <buildtool_depend>catkin</buildtool_depend>
+  <buildtool_depend>ament_cmake</buildtool_depend>
 
+  <depend>action_msgs</depend>
   <depend>actionlib_msgs</depend>
-  <depend>actionlib</depend>
+  <depend>rclcpp_action</depend>
   <depend>control_msgs</depend>
   <depend>industrial_msgs</depend>
   <depend>industrial_utils</depend>
-  <depend>roscpp</depend>
+  <depend>rclcpp</depend>
   <depend>sensor_msgs</depend>
   <depend>simple_message</depend>
   <depend>std_msgs</depend>
@@ -28,10 +29,10 @@
   <depend>urdf</depend>
 
   <exec_depend>robot_state_publisher</exec_depend>
-  <!-- TODO: decide whether we want to introduce this exec_depend, as it would
-       drag in UI dependencies where the rest of IRC doesn't need it -->
-  <!-- <exec_depend>rviz</exec_depend> -->
 
-  <test_depend>roslaunch</test_depend>
-  <test_depend>rosunit</test_depend>
+  <test_depend>ament_gtest</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
 </package>

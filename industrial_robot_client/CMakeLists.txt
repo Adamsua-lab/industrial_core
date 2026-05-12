@@ -1,13 +1,21 @@
-cmake_minimum_required(VERSION 3.0.2)
+cmake_minimum_required(VERSION 3.8)
 
 project(industrial_robot_client)
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(catkin REQUIRED COMPONENTS actionlib actionlib_msgs
-  control_msgs industrial_msgs industrial_utils roscpp sensor_msgs
-  simple_message std_msgs trajectory_msgs urdf)
+find_package(ament_cmake REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(rclcpp_action REQUIRED)
+find_package(control_msgs REQUIRED)
+find_package(industrial_msgs REQUIRED)
+find_package(industrial_utils REQUIRED)
+find_package(sensor_msgs REQUIRED)
+find_package(simple_message REQUIRED)
+find_package(std_msgs REQUIRED)
+find_package(trajectory_msgs REQUIRED)
+find_package(urdf REQUIRED)
 
 find_package(Boost REQUIRED COMPONENTS system thread)
 
@@ -19,43 +27,7 @@ set(SRC_FILES src/joint_relay_handler.cpp
               src/robot_status_relay_handler.cpp
               src/utils.cpp)
 
-# NOTE: The libraries generated this package are not included in the catkin_package
-# macro because libraries must be explicitly linked in projects that depend on this
-# package.  If this is not done (and these libraries were exported), then multiple
-# library definitions (normal - industrial_robot_client and byteswapped.
-# industrial_robot_client_bswap) are both included (this is bad).
-catkin_package(
-  CATKIN_DEPENDS actionlib actionlib_msgs control_msgs
-    industrial_msgs industrial_utils roscpp sensor_msgs
-    simple_message std_msgs trajectory_msgs urdf
-  INCLUDE_DIRS include
-  LIBRARIES ${PROJECT_NAME}_dummy
-  CFG_EXTRAS
-    issue46_workaround.cmake
-    platform_build_flags.cmake
-)
-
-
-include_directories(include
-  ${catkin_INCLUDE_DIRS}
-)
-
-
-# generate dummy library (we export it in catkin_package(..)), to force catkin
-# to set up LIBRARY_DIRS properly.
-# TODO: find out if LIBRARY_DIRS can be exported without dummy library target
-add_custom_command(
-  OUTPUT  ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}_dummy.cpp
-  COMMAND ${CMAKE_COMMAND} -E touch ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}_dummy.cpp)
-add_library(${PROJECT_NAME}_dummy ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}_dummy.cpp)
-# unfortunately this will have to be installed, but the linker will remove it
-# from the library dependencies of dependent targets, as it contains no symbols
-# that can be imported from it.
-install(TARGETS ${PROJECT_NAME}_dummy
-  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  RUNTIME DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION})
-
+include_directories(include)
 
 # This library depends on the simple_message library, which is available
 # in two formats to support endian differences between robot & PC.
@@ -64,7 +36,7 @@ install(TARGETS ${PROJECT_NAME}_dummy
 # passthrough of binary numeric data to the robot controller, and one that
 # uses byte-swapping to account for endian mis-matches.
 #
-# Due to catkin dependency limitations, higher-level code must
+# Due to ament dependency limitations, higher-level code must
 # explicitly link to the desired industrial_robot_client library:
 #    target_link_libraries(my_node industrial_robot_client)
 #      or
@@ -72,12 +44,14 @@ install(TARGETS ${PROJECT_NAME}_dummy
 #
 
 add_library(${PROJECT_NAME} ${SRC_FILES})
-target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} simple_message)
+ament_target_dependencies(${PROJECT_NAME} rclcpp rclcpp_action control_msgs industrial_msgs industrial_utils sensor_msgs std_msgs trajectory_msgs urdf)
+target_link_libraries(${PROJECT_NAME} simple_message)
 target_compile_definitions(${PROJECT_NAME} PUBLIC
   ${simple_message_DEFINITIONS})
 
 add_library(${PROJECT_NAME}_bswap ${SRC_FILES})
-target_link_libraries(${PROJECT_NAME}_bswap ${catkin_LIBRARIES} simple_message_bswap)
+ament_target_dependencies(${PROJECT_NAME}_bswap rclcpp rclcpp_action control_msgs industrial_msgs industrial_utils sensor_msgs std_msgs trajectory_msgs urdf)
+target_link_libraries(${PROJECT_NAME}_bswap simple_message_bswap)
 target_compile_definitions(${PROJECT_NAME}_bswap PUBLIC
   ${simple_message_bswap_DEFINITIONS})
 
@@ -87,28 +61,28 @@ target_compile_definitions(${PROJECT_NAME}_bswap PUBLIC
 
 add_executable(robot_state
   src/generic_robot_state_node.cpp)
-target_link_libraries(robot_state 
+target_link_libraries(robot_state
   ${PROJECT_NAME}
-  simple_message
-  ${catkin_LIBRARIES})
+  simple_message)
+ament_target_dependencies(robot_state rclcpp)
 target_compile_definitions(robot_state PRIVATE
   ${simple_message_DEFINITIONS})
 
 add_executable(motion_streaming_interface
   src/generic_joint_streamer_node.cpp)
-target_link_libraries(motion_streaming_interface 
-  ${PROJECT_NAME} 
-  simple_message
-  ${catkin_LIBRARIES})
+target_link_libraries(motion_streaming_interface
+  ${PROJECT_NAME}
+  simple_message)
+ament_target_dependencies(motion_streaming_interface rclcpp)
 target_compile_definitions(motion_streaming_interface PRIVATE
   ${simple_message_DEFINITIONS})
 
 add_executable(motion_download_interface
   src/generic_joint_downloader_node.cpp)
-target_link_libraries(motion_download_interface 
-  ${PROJECT_NAME} 
-  simple_message
-  ${catkin_LIBRARIES})
+target_link_libraries(motion_download_interface
+  ${PROJECT_NAME}
+  simple_message)
+ament_target_dependencies(motion_download_interface rclcpp)
 target_compile_definitions(motion_download_interface PRIVATE
   ${simple_message_DEFINITIONS})
 
@@ -118,71 +92,55 @@ target_compile_definitions(motion_download_interface PRIVATE
 
 add_executable(robot_state_bswap
   src/generic_robot_state_node.cpp)
-target_link_libraries(robot_state_bswap 
-  ${PROJECT_NAME}_bswap 
-  simple_message_bswap
-  ${catkin_LIBRARIES})
+target_link_libraries(robot_state_bswap
+  ${PROJECT_NAME}_bswap
+  simple_message_bswap)
+ament_target_dependencies(robot_state_bswap rclcpp)
 target_compile_definitions(robot_state_bswap PRIVATE
   ${simple_message_bswap_DEFINITIONS})
 
 add_executable(motion_streaming_interface_bswap
   src/generic_joint_streamer_node.cpp)
-target_link_libraries(motion_streaming_interface_bswap 
-  ${PROJECT_NAME}_bswap  
-  simple_message_bswap
-  ${catkin_LIBRARIES})
+target_link_libraries(motion_streaming_interface_bswap
+  ${PROJECT_NAME}_bswap
+  simple_message_bswap)
+ament_target_dependencies(motion_streaming_interface_bswap rclcpp)
 target_compile_definitions(motion_streaming_interface_bswap PRIVATE
   ${simple_message_bswap_DEFINITIONS})
 
 add_executable(motion_download_interface_bswap
   src/generic_joint_downloader_node.cpp)
-target_link_libraries(motion_download_interface_bswap 
-  ${PROJECT_NAME}_bswap  
-  simple_message_bswap
-  ${catkin_LIBRARIES})
+target_link_libraries(motion_download_interface_bswap
+  ${PROJECT_NAME}_bswap
+  simple_message_bswap)
+ament_target_dependencies(motion_download_interface_bswap rclcpp)
 target_compile_definitions(motion_download_interface_bswap PRIVATE
   ${simple_message_bswap_DEFINITIONS})
 
-# The following executables(nodes) interface with the robot controller
-# at a higher level so there is no need to create two versions (one with
-# byte swapping, one without)
-
-add_executable(joint_trajectory_action 
+add_executable(joint_trajectory_action
   src/generic_joint_trajectory_action_node.cpp
   src/joint_trajectory_action.cpp)
 target_link_libraries(joint_trajectory_action PRIVATE
-  ${PROJECT_NAME} ${catkin_LIBRARIES})
+  ${PROJECT_NAME})
+ament_target_dependencies(joint_trajectory_action rclcpp rclcpp_action)
 
 ##########
 ## Test ##
 ##########
 # Testing - Only performed on normal (non byte swapped library)
-if (CATKIN_ENABLE_TESTING)
-  catkin_add_gtest(utest_robot_client test/utest.cpp)
+if(BUILD_TESTING)
+  find_package(ament_cmake_gtest REQUIRED)
+  ament_add_gtest(utest_robot_client test/utest.cpp)
+  ament_target_dependencies(utest_robot_client rclcpp)
   target_link_libraries(utest_robot_client
-    ${PROJECT_NAME}
-    ${catkin_LIBRARIES})
+    ${PROJECT_NAME})
 endif()
-
-if (CATKIN_ENABLE_TESTING)
-  find_package(roslaunch REQUIRED)
-  roslaunch_add_file_check(test/roslaunch_test.xml)
-endif()
-
-# ROS launch testing
-## ROS launch test should be enabled when launch parameters are supported,
-## see details below:
-## robot_interface_streaming.launch: 'robot_ip'
-## robot_state_visualize.launch]: 'urdf_path'
-## robot_interface_download.launch]: 'robot_ip'
-##find_package(roslaunch)
-##roslaunch_add_file_check(launch)
 
 install(
   TARGETS ${PROJECT_NAME} ${PROJECT_NAME}_bswap
-  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  RUNTIME DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION})
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin)
 
 install(
   TARGETS
@@ -193,11 +151,16 @@ install(
     motion_streaming_interface_bswap
     robot_state
     robot_state_bswap
-  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
+  RUNTIME DESTINATION lib/${PROJECT_NAME})
 
 install(
   DIRECTORY include/${PROJECT_NAME}/
-  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION})
+  DESTINATION include/${PROJECT_NAME})
 
 install(DIRECTORY config launch
-  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
+  DESTINATION share/${PROJECT_NAME})
+
+ament_package(
+  CONFIG_EXTRAS
+    cmake/issue46_workaround.cmake
+)

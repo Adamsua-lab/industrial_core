@@ -1,31 +1,26 @@
-cmake_minimum_required(VERSION 3.0.2)
+cmake_minimum_required(VERSION 3.8)
 
 project(industrial_msgs)
 
-find_package(catkin REQUIRED COMPONENTS message_generation std_msgs trajectory_msgs)
+find_package(ament_cmake REQUIRED)
+find_package(rosidl_default_generators REQUIRED)
+find_package(std_msgs REQUIRED)
+find_package(trajectory_msgs REQUIRED)
 
-add_message_files(
-  FILES
-  DebugLevel.msg
-  DeviceInfo.msg
-  RobotMode.msg
-  RobotStatus.msg
-  ServiceReturnCode.msg
-  TriState.msg)
-
-add_service_files(
-  FILES
-  CmdJointTrajectory.srv
-  GetRobotInfo.srv
-  SetDrivePower.srv
-  SetRemoteLoggerLevel.srv
-  StartMotion.srv
-  StopMotion.srv)
-
-generate_messages(
+rosidl_generate_interfaces(${PROJECT_NAME}
+  "msg/DebugLevel.msg"
+  "msg/DeviceInfo.msg"
+  "msg/RobotMode.msg"
+  "msg/RobotStatus.msg"
+  "msg/ServiceReturnCode.msg"
+  "msg/TriState.msg"
+  "srv/CmdJointTrajectory.srv"
+  "srv/GetRobotInfo.srv"
+  "srv/SetDrivePower.srv"
+  "srv/SetRemoteLoggerLevel.srv"
+  "srv/StartMotion.srv"
+  "srv/StopMotion.srv"
   DEPENDENCIES std_msgs trajectory_msgs
 )
 
-catkin_package(
-  CATKIN_DEPENDS message_runtime std_msgs trajectory_msgs
-)
+ament_package()

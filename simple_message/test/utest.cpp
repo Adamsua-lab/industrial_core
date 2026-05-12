@@ -49,6 +49,7 @@
 #include "simple_message/joint_traj.h"
 
 #include <gtest/gtest.h>
+#include <rclcpp/rclcpp.hpp>
 #include <thread>
 #include <chrono>
 #include <limits>
@@ -600,7 +601,9 @@ TEST(DISABLED_MessageManagerSuite, tcp)
 // Run all the tests that were declared with TEST()
 int main(int argc, char **argv)
 {
-  ros::init(argc, argv, "test");  // some tests need ROS framework
+  rclcpp::init(argc, argv);  // some tests need ROS framework
   testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
+  int result = RUN_ALL_TESTS();
+  rclcpp::shutdown();
+  return result;
 }

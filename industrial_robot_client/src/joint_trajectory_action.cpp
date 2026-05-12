@@ -33,6 +33,7 @@
 #include <industrial_robot_client/utils.h>
 #include <industrial_utils/param_utils.h>
 #include <industrial_utils/utils.h>
+#include <rclcpp/rclcpp.hpp>
 
 namespace industrial_robot_client
 {
@@ -43,51 +44,62 @@ const double JointTrajectoryAction::WATCHDOG_PERIOD_ = 1.0;
 const double JointTrajectoryAction::DEFAULT_GOAL_THRESHOLD_ = 0.01;
 
 JointTrajectoryAction::JointTrajectoryAction() :
-    action_server_(node_, "joint_trajectory_action", boost::bind(&JointTrajectoryAction::goalCB, this, _1),
-                   boost::bind(&JointTrajectoryAction::cancelCB, this, _1), false), has_active_goal_(false),
-                   controller_alive_(false), has_moved_once_(false), name_("joint_trajectory_action")
+    has_active_goal_(false), controller_alive_(false), has_moved_once_(false),
+    name_("joint_trajectory_action")
 {
-  ros::NodeHandle pn("~");
+  node_ = rclcpp::Node::make_shared("joint_trajectory_action");
 
-  pn.param("constraints/goal_threshold", goal_threshold_, DEFAULT_GOAL_THRESHOLD_);
+  node_->declare_parameter("constraints/goal_threshold", DEFAULT_GOAL_THRESHOLD_);
+  goal_threshold_ = node_->get_parameter("constraints/goal_threshold").as_double();
 
-  if (!industrial_utils::param::getJointNames("controller_joint_names", "robot_description", joint_names_))
-    ROS_ERROR_NAMED(name_, "Failed to initialize joint_names.");
+  if (!industrial_utils::param::getJointNames(node_, "controller_joint_names", "robot_description", joint_names_))
+    RCLCPP_ERROR(node_->get_logger(), "Failed to initialize joint_names.");
 
   // The controller joint names parameter includes empty joint names for those joints not supported
   // by the controller.  These are removed since the trajectory action should ignore these.
   std::remove(joint_names_.begin(), joint_names_.end(), std::string());
-  ROS_INFO_STREAM_NAMED(name_, "Filtered joint names to " << joint_names_.size() << " joints");
+  RCLCPP_INFO(node_->get_logger(), "Filtered joint names to %zu joints", joint_names_.size());
 
-  pub_trajectory_command_ = node_.advertise<trajectory_msgs::JointTrajectory>("joint_path_command", 1);
-  sub_trajectory_state_ = node_.subscribe("feedback_states", 1, &JointTrajectoryAction::controllerStateCB, this);
-  sub_robot_status_ = node_.subscribe("robot_status", 1, &JointTrajectoryAction::robotStatusCB, this);
+  pub_trajectory_command_ = node_->create_publisher<trajectory_msgs::msg::JointTrajectory>("joint_path_command", 1);
+  sub_trajectory_state_ = node_->create_subscription<control_msgs::msg::FollowJointTrajectoryFeedback>(
+    "feedback_states", 1,
+    std::bind(&JointTrajectoryAction::controllerStateCB, this, std::placeholders::_1));
+  sub_robot_status_ = node_->create_subscription<industrial_msgs::msg::RobotStatus>(
+    "robot_status", 1,
+    std::bind(&JointTrajectoryAction::robotStatusCB, this, std::placeholders::_1));
 
-  watchdog_timer_ = node_.createTimer(ros::Duration(WATCHDOG_PERIOD_), &JointTrajectoryAction::watchdog, this, true);
-  action_server_.start();
+  action_server_ = rclcpp_action::create_server<control_msgs::action::FollowJointTrajectory>(
+    node_,
+    "joint_trajectory_action",
+    std::bind(&JointTrajectoryAction::goalCB, this, std::placeholders::_1, std::placeholders::_2),
+    std::bind(&JointTrajectoryAction::cancelCB, this, std::placeholders::_1),
+    std::bind(&JointTrajectoryAction::acceptedCB, this, std::placeholders::_1));
+
+  watchdog_timer_ = node_->create_wall_timer(
+    std::chrono::duration<double>(WATCHDOG_PERIOD_),
+    std::bind(&JointTrajectoryAction::watchdog, this));
 }
 
 JointTrajectoryAction::~JointTrajectoryAction()
 {
 }
 
-void JointTrajectoryAction::robotStatusCB(const industrial_msgs::RobotStatusConstPtr &msg)
+void JointTrajectoryAction::robotStatusCB(const industrial_msgs::msg::RobotStatus::SharedPtr msg)
 {
   last_robot_status_ = msg; //caching robot status for later use.
-  has_moved_once_ = has_moved_once_ ? true : (last_robot_status_->in_motion.val == industrial_msgs::TriState::TRUE);
+  has_moved_once_ = has_moved_once_ ? true : (last_robot_status_->in_motion.val == industrial_msgs::msg::TriState::TRUE);
 }
 
-void JointTrajectoryAction::watchdog(const ros::TimerEvent &e)
+void JointTrajectoryAction::watchdog()
 {
   // Some debug logging
   if (!last_trajectory_state_)
   {
-    ROS_DEBUG_NAMED(name_, "Waiting for subscription to joint trajectory state");
+    RCLCPP_DEBUG(node_->get_logger(), "Waiting for subscription to joint trajectory state");
   }
 
-  ROS_WARN_NAMED(name_, "Trajectory state not received for %f seconds", WATCHDOG_PERIOD_);
+  RCLCPP_WARN(node_->get_logger(), "Trajectory state not received for %f seconds", WATCHDOG_PERIOD_);
   controller_alive_ = false;
-
 
   // Aborts the active goal if the controller does not appear to be active.
   if (has_active_goal_)
@@ -95,148 +107,143 @@ void JointTrajectoryAction::watchdog(const ros::TimerEvent &e)
     // last_trajectory_state_ is null if the subscriber never makes a connection
     if (!last_trajectory_state_)
     {
-      ROS_WARN_NAMED(name_, "Aborting goal because we have never heard a controller state message.");
+      RCLCPP_WARN(node_->get_logger(), "Aborting goal because we have never heard a controller state message.");
     }
     else
     {
-      ROS_WARN_STREAM_NAMED(name_,
-          "Aborting goal because we haven't heard from the controller in " << WATCHDOG_PERIOD_ << " seconds");
+      RCLCPP_WARN(node_->get_logger(),
+          "Aborting goal because we haven't heard from the controller in %f seconds", WATCHDOG_PERIOD_);
     }
 
     abortGoal();
   }
 }
 
-void JointTrajectoryAction::goalCB(JointTractoryActionServer::GoalHandle gh)
+rclcpp_action::GoalResponse JointTrajectoryAction::goalCB(
+  const rclcpp_action::GoalUUID & uuid,
+  std::shared_ptr<const control_msgs::action::FollowJointTrajectory::Goal> goal)
 {
-  ROS_INFO_STREAM_NAMED(name_, "Received new goal");
+  (void)uuid;
+  RCLCPP_INFO(node_->get_logger(), "Received new goal");
 
   // reject all goals as long as we haven't heard from the remote controller
   if (!controller_alive_)
   {
-    ROS_ERROR_NAMED(name_, "Joint trajectory action rejected: waiting for (initial) feedback from controller");
-    control_msgs::FollowJointTrajectoryResult rslt;
-    rslt.error_code = control_msgs::FollowJointTrajectoryResult::INVALID_GOAL;
-    gh.setRejected(rslt, "Waiting for (initial) feedback from controller");
-
-    // no point in continuing: already rejected
-    return;
+    RCLCPP_ERROR(node_->get_logger(), "Joint trajectory action rejected: waiting for (initial) feedback from controller");
+    return rclcpp_action::GoalResponse::REJECT;
   }
 
-  if (!gh.getGoal()->trajectory.points.empty())
+  if (goal->trajectory.points.empty())
   {
-    if (industrial_utils::isSimilar(joint_names_, gh.getGoal()->trajectory.joint_names))
-    {
-
-      // Cancels the currently active goal.
-      if (has_active_goal_)
-      {
-        ROS_WARN_NAMED(name_, "Received new goal, canceling current goal");
-        abortGoal();
-      }
-
-      gh.setAccepted();
-      active_goal_ = gh;
-      has_active_goal_ = true;
-      time_to_check_ = ros::Time::now() +
-          ros::Duration(active_goal_.getGoal()->trajectory.points.back().time_from_start.toSec() / 2.0);
-      has_moved_once_ = false;
-
-      ROS_INFO_STREAM_NAMED(name_, "Publishing trajectory");
-
-      current_traj_ = active_goal_.getGoal()->trajectory;
-      pub_trajectory_command_.publish(current_traj_);
-
-    }
-    else
-    {
-      ROS_ERROR_NAMED(name_, "Joint trajectory action failing on invalid joints");
-      control_msgs::FollowJointTrajectoryResult rslt;
-      rslt.error_code = control_msgs::FollowJointTrajectoryResult::INVALID_JOINTS;
-      gh.setRejected(rslt, "Joint names do not match");
-    }
+    RCLCPP_ERROR(node_->get_logger(), "Joint trajectory action failed on empty trajectory");
+    return rclcpp_action::GoalResponse::REJECT;
   }
-  else
+
+  if (!industrial_utils::isSimilar(joint_names_, goal->trajectory.joint_names))
   {
-    ROS_ERROR_NAMED(name_, "Joint trajectory action failed on empty trajectory");
-    control_msgs::FollowJointTrajectoryResult rslt;
-    rslt.error_code = control_msgs::FollowJointTrajectoryResult::INVALID_GOAL;
-    gh.setRejected(rslt, "Empty trajectory");
+    RCLCPP_ERROR(node_->get_logger(), "Joint trajectory action failing on invalid joints");
+    return rclcpp_action::GoalResponse::REJECT;
   }
 
   // Adding some informational log messages to indicate unsupported goal constraints
-  if (gh.getGoal()->goal_time_tolerance.toSec() > 0.0)
+  if (rclcpp::Duration(goal->goal_time_tolerance).seconds() > 0.0)
   {
-    ROS_WARN_STREAM_NAMED(name_, "Ignoring goal time tolerance in action goal, may be supported in the future");
+    RCLCPP_WARN(node_->get_logger(), "Ignoring goal time tolerance in action goal, may be supported in the future");
   }
-  if (!gh.getGoal()->goal_tolerance.empty())
+  if (!goal->goal_tolerance.empty())
   {
-    ROS_WARN_STREAM_NAMED(name_,
-        "Ignoring goal tolerance in action, using paramater tolerance of " << goal_threshold_ << " instead");
+    RCLCPP_WARN(node_->get_logger(),
+        "Ignoring goal tolerance in action, using paramater tolerance of %f instead", goal_threshold_);
   }
-  if (!gh.getGoal()->path_tolerance.empty())
+  if (!goal->path_tolerance.empty())
   {
-    ROS_WARN_STREAM_NAMED(name_, "Ignoring goal path tolerance, option not supported by ROS-Industrial drivers");
+    RCLCPP_WARN(node_->get_logger(), "Ignoring goal path tolerance, option not supported by ROS-Industrial drivers");
   }
+
+  return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
 }
 
-void JointTrajectoryAction::cancelCB(JointTractoryActionServer::GoalHandle gh)
+rclcpp_action::CancelResponse JointTrajectoryAction::cancelCB(
+  rclcpp_action::ServerGoalHandle<control_msgs::action::FollowJointTrajectory>::SharedPtr gh)
 {
-  ROS_DEBUG_NAMED(name_, "Received action cancel request");
+  RCLCPP_DEBUG(node_->get_logger(), "Received action cancel request");
   if (active_goal_ == gh)
   {
     // Stops the controller.
-    trajectory_msgs::JointTrajectory empty;
+    trajectory_msgs::msg::JointTrajectory empty;
     empty.joint_names = joint_names_;
-    pub_trajectory_command_.publish(empty);
+    pub_trajectory_command_->publish(empty);
 
     // Marks the current goal as canceled.
-    active_goal_.setCanceled();
+    active_goal_->canceled(std::make_shared<control_msgs::action::FollowJointTrajectory::Result>());
     has_active_goal_ = false;
   }
   else
   {
-    ROS_WARN_NAMED(name_, "Active goal and goal cancel do not match, ignoring cancel request");
+    RCLCPP_WARN(node_->get_logger(), "Active goal and goal cancel do not match, ignoring cancel request");
   }
+  return rclcpp_action::CancelResponse::ACCEPT;
 }
 
-void JointTrajectoryAction::controllerStateCB(const control_msgs::FollowJointTrajectoryFeedbackConstPtr &msg)
+void JointTrajectoryAction::acceptedCB(
+  rclcpp_action::ServerGoalHandle<control_msgs::action::FollowJointTrajectory>::SharedPtr gh)
 {
-  ROS_DEBUG_STREAM_NAMED(name_, "Checking controller state feedback");
+  // Cancels the currently active goal.
+  if (has_active_goal_)
+  {
+    RCLCPP_WARN(node_->get_logger(), "Received new goal, canceling current goal");
+    abortGoal();
+  }
+
+  active_goal_ = gh;
+  has_active_goal_ = true;
+  time_to_check_ = node_->now() +
+      rclcpp::Duration::from_seconds(
+        active_goal_->get_goal()->trajectory.points.back().time_from_start.sec / 2.0);
+  has_moved_once_ = false;
+
+  RCLCPP_INFO(node_->get_logger(), "Publishing trajectory");
+
+  current_traj_ = active_goal_->get_goal()->trajectory;
+  pub_trajectory_command_->publish(current_traj_);
+}
+
+void JointTrajectoryAction::controllerStateCB(const control_msgs::msg::FollowJointTrajectoryFeedback::SharedPtr msg)
+{
+  RCLCPP_DEBUG(node_->get_logger(), "Checking controller state feedback");
 
   last_trajectory_state_ = msg;
   controller_alive_ = true;
 
-  watchdog_timer_.stop();
-  watchdog_timer_.start();
+  watchdog_timer_->reset();
 
   if (!has_active_goal_)
   {
-    //ROS_DEBUG_NAMED(name_, "No active goal, ignoring feedback");
+    //RCLCPP_DEBUG(node_->get_logger(), "No active goal, ignoring feedback");
     return;
   }
   if (current_traj_.points.empty())
   {
-    ROS_INFO_NAMED(name_, "Current trajectory is empty, ignoring feedback");
+    RCLCPP_INFO(node_->get_logger(), "Current trajectory is empty, ignoring feedback");
     return;
   }
 
   if (!industrial_utils::isSimilar(joint_names_, msg->joint_names))
   {
-    ROS_ERROR_NAMED(name_, "Joint names from the controller don't match our joint names.");
+    RCLCPP_ERROR(node_->get_logger(), "Joint names from the controller don't match our joint names.");
     return;
   }
 
-  if (!has_moved_once_ && (ros::Time::now() < time_to_check_))
+  if (!has_moved_once_ && (node_->now() < time_to_check_))
   {
-    ROS_INFO_NAMED(name_, "Waiting to check for goal completion until halfway through trajectory");
+    RCLCPP_INFO(node_->get_logger(), "Waiting to check for goal completion until halfway through trajectory");
     return;
   }
 
   // Checking for goal constraints
   // Checks that we have ended inside the goal constraints and has motion stopped
 
-  ROS_DEBUG_STREAM_NAMED(name_, "Checking goal constraints");
+  RCLCPP_DEBUG(node_->get_logger(), "Checking goal constraints");
   if (withinGoalConstraints(last_trajectory_state_, current_traj_))
   {
     if (last_robot_status_)
@@ -245,29 +252,29 @@ void JointTrajectoryAction::controllerStateCB(const control_msgs::FollowJointTra
       // be moving.  The current robot driver calls a motion stop if it receives
       // a new trajectory while it is still moving.  If the driver is not publishing
       // the motion state (i.e. old driver), this will still work, but it warns you.
-      if (last_robot_status_->in_motion.val == industrial_msgs::TriState::FALSE)
+      if (last_robot_status_->in_motion.val == industrial_msgs::msg::TriState::FALSE)
       {
-        ROS_INFO_NAMED("joint_trajectory_action.controllerStateCB", "Inside goal constraints - stopped moving-  return success for action");
-        active_goal_.setSucceeded();
+        RCLCPP_INFO(node_->get_logger(), "Inside goal constraints - stopped moving-  return success for action");
+        active_goal_->succeed(std::make_shared<control_msgs::action::FollowJointTrajectory::Result>());
         has_active_goal_ = false;
       }
-      else if (last_robot_status_->in_motion.val == industrial_msgs::TriState::UNKNOWN)
+      else if (last_robot_status_->in_motion.val == industrial_msgs::msg::TriState::UNKNOWN)
       {
-        ROS_INFO_NAMED(name_, "Inside goal constraints, return success for action");
-        ROS_WARN_NAMED(name_, "Robot status in motion unknown, the robot driver node and controller code should be updated");
-        active_goal_.setSucceeded();
+        RCLCPP_INFO(node_->get_logger(), "Inside goal constraints, return success for action");
+        RCLCPP_WARN(node_->get_logger(), "Robot status in motion unknown, the robot driver node and controller code should be updated");
+        active_goal_->succeed(std::make_shared<control_msgs::action::FollowJointTrajectory::Result>());
         has_active_goal_ = false;
       }
       else
       {
-        ROS_DEBUG_NAMED(name_, "Within goal constraints but robot is still moving");
+        RCLCPP_DEBUG(node_->get_logger(), "Within goal constraints but robot is still moving");
       }
     }
     else
     {
-      ROS_INFO_NAMED(name_, "Inside goal constraints, return success for action");
-      ROS_WARN_NAMED(name_, "Robot status is not being published the robot driver node and controller code should be updated");
-      active_goal_.setSucceeded();
+      RCLCPP_INFO(node_->get_logger(), "Inside goal constraints, return success for action");
+      RCLCPP_WARN(node_->get_logger(), "Robot status is not being published the robot driver node and controller code should be updated");
+      active_goal_->succeed(std::make_shared<control_msgs::action::FollowJointTrajectory::Result>());
       has_active_goal_ = false;
     }
   }
@@ -276,21 +283,21 @@ void JointTrajectoryAction::controllerStateCB(const control_msgs::FollowJointTra
 void JointTrajectoryAction::abortGoal()
 {
   // Stops the controller.
-  trajectory_msgs::JointTrajectory empty;
-  pub_trajectory_command_.publish(empty);
+  trajectory_msgs::msg::JointTrajectory empty;
+  pub_trajectory_command_->publish(empty);
 
   // Marks the current goal as aborted.
-  active_goal_.setAborted();
+  active_goal_->abort(std::make_shared<control_msgs::action::FollowJointTrajectory::Result>());
   has_active_goal_ = false;
 }
 
-bool JointTrajectoryAction::withinGoalConstraints(const control_msgs::FollowJointTrajectoryFeedbackConstPtr &msg,
-                                                  const trajectory_msgs::JointTrajectory & traj)
+bool JointTrajectoryAction::withinGoalConstraints(const control_msgs::msg::FollowJointTrajectoryFeedback::SharedPtr &msg,
+                                                  const trajectory_msgs::msg::JointTrajectory & traj)
 {
   bool rtn = false;
   if (traj.points.empty())
   {
-    ROS_WARN_NAMED(name_, "Empty joint trajectory passed to check goal constraints, return false");
+    RCLCPP_WARN(node_->get_logger(), "Empty joint trajectory passed to check goal constraints, return false");
     rtn = false;
   }
   else

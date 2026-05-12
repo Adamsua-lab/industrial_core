@@ -30,8 +30,9 @@
  */
 
 //#include <arm_navigation_msgs/FilterJointTrajectoryWithConstraints.h>
-#include <trajectory_msgs/JointTrajectory.h>
+#include <trajectory_msgs/msg/joint_trajectory.hpp>
 #include <industrial_trajectory_filters/n_point_filter.h>
+#include <rclcpp/rclcpp.hpp>
 
 using namespace industrial_trajectory_filters;
 
@@ -41,7 +42,7 @@ template<typename T>
   NPointFilter<T>::NPointFilter() :
       FilterBase<T>()
   {
-    ROS_INFO_STREAM("Constructing N point filter");
+    RCLCPP_INFO(rclcpp::get_logger("n_point_filter"), "Constructing N point filter");
     n_points_ = DEFAULT_N;
     this->filter_name_ = "NPointFilter";
     this->filter_type_ = "NPointFilter";
@@ -56,16 +57,16 @@ template<typename T>
   bool NPointFilter<T>::configure()
   {
     //if (!filters::FilterBase<T>::getParam("n_points", n_points_))
-    if (!this->nh_.getParam("n_points", n_points_))
+    if (!this->nh_ || !this->nh_->get_parameter("n_points", n_points_))
     {
-      ROS_WARN_STREAM("NPointFilter, params has no attribute n_points.");
+      RCLCPP_WARN(rclcpp::get_logger("n_point_filter"), "NPointFilter, params has no attribute n_points.");
     }
     if (n_points_ < 2)
     {
-      ROS_WARN_STREAM( "n_points attribute less than min(2), setting to minimum");
+      RCLCPP_WARN(rclcpp::get_logger("n_point_filter"), "n_points attribute less than min(2), setting to minimum");
       n_points_ = 2;
     }
-    ROS_INFO_STREAM("Using a n_points value of " << n_points_);
+    RCLCPP_INFO(rclcpp::get_logger("n_point_filter"), "Using a n_points value of %d", n_points_);
 
     return true;
   }
@@ -88,8 +89,8 @@ template<typename T>
 
       int intermediate_points = n_points_ - 2; //subtract the first and last elements
       double int_point_increment = double(size_in) / double(intermediate_points + 1.0);
-      ROS_INFO_STREAM(
-          "Number of intermediate points: " << intermediate_points << ", increment: " << int_point_increment);
+      RCLCPP_INFO(rclcpp::get_logger("n_point_filter"),
+          "Number of intermediate points: %d, increment: %f", intermediate_points, int_point_increment);
 
       // The intermediate point index is determined by the following equation:
       //     int_point_index = i * int_point_increment
@@ -100,21 +101,23 @@ template<typename T>
       for (int i = 1; i <= intermediate_points; i++)
       {
         int int_point_index = int(double(i) * int_point_increment);
-        ROS_INFO_STREAM("Intermediate point index: " << int_point_index);
+        RCLCPP_INFO(rclcpp::get_logger("n_point_filter"), "Intermediate point index: %d", int_point_index);
         trajectory_out.request.trajectory.points.push_back(trajectory_in.request.trajectory.points[int_point_index]);
       }
 
       //Add last point to output trajectory
       trajectory_out.request.trajectory.points.push_back(trajectory_in.request.trajectory.points.back());
 
-      ROS_INFO_STREAM(
-          "Filtered trajectory from: " << trajectory_in.request.trajectory.points.size() << " to: " << trajectory_out.request.trajectory.points.size());
+      RCLCPP_INFO(rclcpp::get_logger("n_point_filter"),
+          "Filtered trajectory from: %zu to: %zu",
+          trajectory_in.request.trajectory.points.size(),
+          trajectory_out.request.trajectory.points.size());
 
       success = true;
     }
     else
     {
-      ROS_WARN_STREAM( "Trajectory size less than n: " << n_points_ << ", pass through");
+      RCLCPP_WARN(rclcpp::get_logger("n_point_filter"), "Trajectory size less than n: %d, pass through", n_points_);
       trajectory_out.request.trajectory = trajectory_in.request.trajectory;
       success = true;
     }
