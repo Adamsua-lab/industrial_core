@@ -35,7 +35,7 @@
 #include <typeinfo>
 #include <rclcpp/rclcpp.hpp>
 #include <moveit/planning_interface/planning_request_adapter.h>
-#include <moveit/version.h>
+#include <moveit/version.hpp>
 #include <class_loader/class_loader.hpp>
 
 namespace industrial_trajectory_filters
