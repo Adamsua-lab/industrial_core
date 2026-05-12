@@ -120,9 +120,9 @@ target_compile_definitions(motion_download_interface_bswap PRIVATE
 add_executable(joint_trajectory_action
   src/generic_joint_trajectory_action_node.cpp
   src/joint_trajectory_action.cpp)
+ament_target_dependencies(joint_trajectory_action rclcpp rclcpp_action)
 target_link_libraries(joint_trajectory_action PRIVATE
   ${PROJECT_NAME})
-ament_target_dependencies(joint_trajectory_action rclcpp rclcpp_action)
 
 ##########
 ## Test ##
