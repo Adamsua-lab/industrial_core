@@ -34,7 +34,7 @@
 
 /* Author: Chris Lewis */
 
-#include <moveit/planning_request_adapter/planning_request_adapter.h>
+#include <moveit/planning_interface/planning_request_adapter.h>
 #include <moveit/version.h>
 #include <class_loader/class_loader.hpp>
 
