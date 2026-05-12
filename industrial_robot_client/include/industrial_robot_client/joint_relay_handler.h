@@ -38,7 +38,6 @@
 
 #include <rclcpp/rclcpp.hpp>
 #include "control_msgs/action/follow_joint_trajectory.hpp"
-#include "control_msgs/msg/follow_joint_trajectory_feedback.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
 #include "simple_message/message_handler.h"
 #include "simple_message/messages/joint_message.h"
@@ -88,7 +87,7 @@ protected:
 
   std::vector<std::string> all_joint_names_;
 
-  rclcpp::Publisher<control_msgs::msg::FollowJointTrajectoryFeedback>::SharedPtr pub_joint_control_state_;
+  rclcpp::Publisher<control_msgs::action::FollowJointTrajectory::Feedback>::SharedPtr pub_joint_control_state_;
   rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr pub_joint_sensor_state_;
   rclcpp::Node::SharedPtr node_;
 
@@ -102,7 +101,7 @@ protected:
    * \return true on success, false otherwise
    */
   virtual bool create_messages(JointMessage& msg_in,
-                               control_msgs::msg::FollowJointTrajectoryFeedback* control_state,
+                               control_msgs::action::FollowJointTrajectory::Feedback* control_state,
                                sensor_msgs::msg::JointState* sensor_state);
 
   /**

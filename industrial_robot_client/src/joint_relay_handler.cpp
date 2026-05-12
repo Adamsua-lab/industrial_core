@@ -47,7 +47,7 @@ bool JointRelayHandler::init(SmplMsgConnection* connection, std::vector<std::str
 {
   this->node_ = rclcpp::Node::make_shared("joint_relay_handler");
   this->pub_joint_control_state_ =
-          this->node_->create_publisher<control_msgs::msg::FollowJointTrajectoryFeedback>("feedback_states", 1);
+          this->node_->create_publisher<control_msgs::action::FollowJointTrajectory::Feedback>("feedback_states", 1);
 
   this->pub_joint_sensor_state_ = this->node_->create_publisher<sensor_msgs::msg::JointState>("joint_states", 1);
 
@@ -72,8 +72,8 @@ bool JointRelayHandler::internalCB(SimpleMessage& in)
 
 bool JointRelayHandler::internalCB(JointMessage& in)
 {
-  control_msgs::FollowJointTrajectoryFeedback control_state;
-  sensor_msgs::JointState sensor_state;
+  control_msgs::action::FollowJointTrajectory::Feedback control_state;
+  sensor_msgs::msg::JointState sensor_state;
   bool rtn = true;
 
   if (create_messages(in, &control_state, &sensor_state))
@@ -97,7 +97,7 @@ bool JointRelayHandler::internalCB(JointMessage& in)
 
 // TODO: Add support for other message fields (velocity, effort, desired pos)
 bool JointRelayHandler::create_messages(JointMessage& msg_in,
-                                        control_msgs::msg::FollowJointTrajectoryFeedback* control_state,
+                                        control_msgs::action::FollowJointTrajectory::Feedback* control_state,
                                         sensor_msgs::msg::JointState* sensor_state)
 {
   // read joint positions from JointMessage
@@ -129,7 +129,7 @@ bool JointRelayHandler::create_messages(JointMessage& msg_in,
   }
 
   // assign values to messages
-  control_msgs::msg::FollowJointTrajectoryFeedback tmp_control_state;  // always start with a "clean" message
+  control_msgs::action::FollowJointTrajectory::Feedback tmp_control_state;  // always start with a "clean" message
   tmp_control_state.header.stamp = node_->now();
   tmp_control_state.joint_names = pub_joint_names;
   tmp_control_state.actual.positions = pub_joint_pos;

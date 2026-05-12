@@ -132,4 +132,8 @@ install(
     DIRECTORY include/${PROJECT_NAME}/
     DESTINATION include/${PROJECT_NAME})
 
+ament_export_include_directories(include)
+ament_export_libraries(${PROJECT_NAME} ${PROJECT_NAME}_bswap ${PROJECT_NAME}_float64)
+ament_export_dependencies(rclcpp industrial_msgs)
+
 ament_package()
