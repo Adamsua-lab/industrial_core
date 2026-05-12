@@ -124,6 +124,7 @@ endif()
 
 install(
     TARGETS ${PROJECT_NAME} ${PROJECT_NAME}_bswap ${PROJECT_NAME}_float64
+    EXPORT simple_messageTargets
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib
     RUNTIME DESTINATION bin)
@@ -133,7 +134,7 @@ install(
     DESTINATION include/${PROJECT_NAME})
 
 ament_export_include_directories(include)
-ament_export_libraries(${PROJECT_NAME} ${PROJECT_NAME}_bswap ${PROJECT_NAME}_float64)
+ament_export_targets(simple_messageTargets HAS_LIBRARY_TARGET)
 ament_export_dependencies(rclcpp industrial_msgs)
 
 ament_package()

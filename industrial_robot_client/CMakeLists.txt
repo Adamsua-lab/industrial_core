@@ -47,13 +47,13 @@ include_directories(include)
 
 add_library(${PROJECT_NAME} ${SRC_FILES})
 ament_target_dependencies(${PROJECT_NAME} rclcpp rclcpp_action control_msgs industrial_msgs industrial_utils sensor_msgs std_msgs trajectory_msgs urdf)
-target_link_libraries(${PROJECT_NAME} simple_message)
+target_link_libraries(${PROJECT_NAME} simple_message::simple_message)
 target_compile_definitions(${PROJECT_NAME} PUBLIC
   SIMPLE_MESSAGE_USE_ROS SIMPLE_MESSAGE_LINUX)
 
 add_library(${PROJECT_NAME}_bswap ${SRC_FILES})
 ament_target_dependencies(${PROJECT_NAME}_bswap rclcpp rclcpp_action control_msgs industrial_msgs industrial_utils sensor_msgs std_msgs trajectory_msgs urdf)
-target_link_libraries(${PROJECT_NAME}_bswap simple_message_bswap)
+target_link_libraries(${PROJECT_NAME}_bswap simple_message::simple_message_bswap)
 target_compile_definitions(${PROJECT_NAME}_bswap PUBLIC
   SIMPLE_MESSAGE_USE_ROS SIMPLE_MESSAGE_LINUX BYTE_SWAPPING)
 
@@ -65,7 +65,7 @@ add_executable(robot_state
   src/generic_robot_state_node.cpp)
 target_link_libraries(robot_state
   ${PROJECT_NAME}
-  simple_message)
+  simple_message::simple_message)
 ament_target_dependencies(robot_state rclcpp)
 target_compile_definitions(robot_state PRIVATE
   SIMPLE_MESSAGE_USE_ROS SIMPLE_MESSAGE_LINUX)
@@ -74,7 +74,7 @@ add_executable(motion_streaming_interface
   src/generic_joint_streamer_node.cpp)
 target_link_libraries(motion_streaming_interface
   ${PROJECT_NAME}
-  simple_message)
+  simple_message::simple_message)
 ament_target_dependencies(motion_streaming_interface rclcpp)
 target_compile_definitions(motion_streaming_interface PRIVATE
   SIMPLE_MESSAGE_USE_ROS SIMPLE_MESSAGE_LINUX)
@@ -83,7 +83,7 @@ add_executable(motion_download_interface
   src/generic_joint_downloader_node.cpp)
 target_link_libraries(motion_download_interface
   ${PROJECT_NAME}
-  simple_message)
+  simple_message::simple_message)
 ament_target_dependencies(motion_download_interface rclcpp)
 target_compile_definitions(motion_download_interface PRIVATE
   SIMPLE_MESSAGE_USE_ROS SIMPLE_MESSAGE_LINUX)
@@ -96,7 +96,7 @@ add_executable(robot_state_bswap
   src/generic_robot_state_node.cpp)
 target_link_libraries(robot_state_bswap
   ${PROJECT_NAME}_bswap
-  simple_message_bswap)
+  simple_message::simple_message_bswap)
 ament_target_dependencies(robot_state_bswap rclcpp)
 target_compile_definitions(robot_state_bswap PRIVATE
   SIMPLE_MESSAGE_USE_ROS SIMPLE_MESSAGE_LINUX BYTE_SWAPPING)
@@ -105,7 +105,7 @@ add_executable(motion_streaming_interface_bswap
   src/generic_joint_streamer_node.cpp)
 target_link_libraries(motion_streaming_interface_bswap
   ${PROJECT_NAME}_bswap
-  simple_message_bswap)
+  simple_message::simple_message_bswap)
 ament_target_dependencies(motion_streaming_interface_bswap rclcpp)
 target_compile_definitions(motion_streaming_interface_bswap PRIVATE
   SIMPLE_MESSAGE_USE_ROS SIMPLE_MESSAGE_LINUX BYTE_SWAPPING)
@@ -114,7 +114,7 @@ add_executable(motion_download_interface_bswap
   src/generic_joint_downloader_node.cpp)
 target_link_libraries(motion_download_interface_bswap
   ${PROJECT_NAME}_bswap
-  simple_message_bswap)
+  simple_message::simple_message_bswap)
 ament_target_dependencies(motion_download_interface_bswap rclcpp)
 target_compile_definitions(motion_download_interface_bswap PRIVATE
   SIMPLE_MESSAGE_USE_ROS SIMPLE_MESSAGE_LINUX BYTE_SWAPPING)

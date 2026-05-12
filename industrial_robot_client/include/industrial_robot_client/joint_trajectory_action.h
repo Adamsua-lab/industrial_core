@@ -37,7 +37,6 @@
 
 #include <trajectory_msgs/msg/joint_trajectory.hpp>
 #include <control_msgs/action/follow_joint_trajectory.hpp>
-#include <control_msgs/msg/follow_joint_trajectory_feedback.hpp>
 #include <industrial_msgs/msg/robot_status.hpp>
 
 namespace industrial_robot_client
@@ -94,7 +93,7 @@ private:
    * \brief Subscribes to trajectory feedback (typically published by the
    * robot driver).
    */
-  rclcpp::Subscription<control_msgs::msg::FollowJointTrajectoryFeedback>::SharedPtr sub_trajectory_state_;
+  rclcpp::Subscription<control_msgs::action::FollowJointTrajectory::Feedback>::SharedPtr sub_trajectory_state_;
 
   /**
    * \brief Subscribes to the robot status (typically published by the
@@ -158,7 +157,7 @@ private:
   /**
    * \brief Cache of the last subscribed feedback message
    */
-  control_msgs::msg::FollowJointTrajectoryFeedback::SharedPtr last_trajectory_state_;
+  control_msgs::action::FollowJointTrajectory::Feedback::SharedPtr last_trajectory_state_;
 
   /**
    * \brief Cache of the last subscribed status message
@@ -217,7 +216,7 @@ private:
    * \param msg joint trajectory feedback message
    *
    */
-  void controllerStateCB(const control_msgs::msg::FollowJointTrajectoryFeedback::SharedPtr msg);
+  void controllerStateCB(const control_msgs::action::FollowJointTrajectory::Feedback::SharedPtr msg);
 
   /**
    * \brief Controller status callback (executed when robot status
@@ -246,7 +245,7 @@ private:
    * \return true if all joints are within goal contraints
    *
    */
-  bool withinGoalConstraints(const control_msgs::msg::FollowJointTrajectoryFeedback::SharedPtr &msg,
+  bool withinGoalConstraints(const control_msgs::action::FollowJointTrajectory::Feedback::SharedPtr &msg,
                              const trajectory_msgs::msg::JointTrajectory & traj);
 };
 

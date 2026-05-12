@@ -51,7 +51,7 @@ enum TransferState
   IDLE = 0, STREAMING =1 //,STARTING, //, STOPPING
 };
 
-std::string to_string(TransferState state)
+inline std::string to_string(TransferState state)
 {
   if(state == TransferState::IDLE)
     return "IDLE";

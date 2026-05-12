@@ -61,7 +61,7 @@ JointTrajectoryAction::JointTrajectoryAction() :
   RCLCPP_INFO(node_->get_logger(), "Filtered joint names to %zu joints", joint_names_.size());
 
   pub_trajectory_command_ = node_->create_publisher<trajectory_msgs::msg::JointTrajectory>("joint_path_command", 1);
-  sub_trajectory_state_ = node_->create_subscription<control_msgs::msg::FollowJointTrajectoryFeedback>(
+  sub_trajectory_state_ = node_->create_subscription<control_msgs::action::FollowJointTrajectory::Feedback>(
     "feedback_states", 1,
     std::bind(&JointTrajectoryAction::controllerStateCB, this, std::placeholders::_1));
   sub_robot_status_ = node_->create_subscription<industrial_msgs::msg::RobotStatus>(
@@ -208,7 +208,7 @@ void JointTrajectoryAction::acceptedCB(
   pub_trajectory_command_->publish(current_traj_);
 }
 
-void JointTrajectoryAction::controllerStateCB(const control_msgs::msg::FollowJointTrajectoryFeedback::SharedPtr msg)
+void JointTrajectoryAction::controllerStateCB(const control_msgs::action::FollowJointTrajectory::Feedback::SharedPtr msg)
 {
   RCLCPP_DEBUG(node_->get_logger(), "Checking controller state feedback");
 
@@ -291,7 +291,7 @@ void JointTrajectoryAction::abortGoal()
   has_active_goal_ = false;
 }
 
-bool JointTrajectoryAction::withinGoalConstraints(const control_msgs::msg::FollowJointTrajectoryFeedback::SharedPtr &msg,
+bool JointTrajectoryAction::withinGoalConstraints(const control_msgs::action::FollowJointTrajectory::Feedback::SharedPtr &msg,
                                                   const trajectory_msgs::msg::JointTrajectory & traj)
 {
   bool rtn = false;
