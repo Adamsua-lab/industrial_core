@@ -132,8 +132,4 @@ install(
     DIRECTORY include/${PROJECT_NAME}/
     DESTINATION include/${PROJECT_NAME})
 
-ament_package(
-  CONFIG_EXTRAS
-    cmake/issue46_workaround.cmake
-    cmake/platform_build_flags.cmake
-)
+ament_package()

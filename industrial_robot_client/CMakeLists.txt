@@ -47,13 +47,13 @@ add_library(${PROJECT_NAME} ${SRC_FILES})
 ament_target_dependencies(${PROJECT_NAME} rclcpp rclcpp_action control_msgs industrial_msgs industrial_utils sensor_msgs std_msgs trajectory_msgs urdf)
 target_link_libraries(${PROJECT_NAME} simple_message)
 target_compile_definitions(${PROJECT_NAME} PUBLIC
-  ${simple_message_DEFINITIONS})
+  SIMPLE_MESSAGE_USE_ROS SIMPLE_MESSAGE_LINUX)
 
 add_library(${PROJECT_NAME}_bswap ${SRC_FILES})
 ament_target_dependencies(${PROJECT_NAME}_bswap rclcpp rclcpp_action control_msgs industrial_msgs industrial_utils sensor_msgs std_msgs trajectory_msgs urdf)
 target_link_libraries(${PROJECT_NAME}_bswap simple_message_bswap)
 target_compile_definitions(${PROJECT_NAME}_bswap PUBLIC
-  ${simple_message_bswap_DEFINITIONS})
+  SIMPLE_MESSAGE_USE_ROS SIMPLE_MESSAGE_LINUX BYTE_SWAPPING)
 
 # The following executables(nodes) are for applications where the robot
 # controller and pc have the same byte order (i.e. byte swapping NOT
@@ -66,7 +66,7 @@ target_link_libraries(robot_state
   simple_message)
 ament_target_dependencies(robot_state rclcpp)
 target_compile_definitions(robot_state PRIVATE
-  ${simple_message_DEFINITIONS})
+  SIMPLE_MESSAGE_USE_ROS SIMPLE_MESSAGE_LINUX)
 
 add_executable(motion_streaming_interface
   src/generic_joint_streamer_node.cpp)
@@ -75,7 +75,7 @@ target_link_libraries(motion_streaming_interface
   simple_message)
 ament_target_dependencies(motion_streaming_interface rclcpp)
 target_compile_definitions(motion_streaming_interface PRIVATE
-  ${simple_message_DEFINITIONS})
+  SIMPLE_MESSAGE_USE_ROS SIMPLE_MESSAGE_LINUX)
 
 add_executable(motion_download_interface
   src/generic_joint_downloader_node.cpp)
@@ -84,7 +84,7 @@ target_link_libraries(motion_download_interface
   simple_message)
 ament_target_dependencies(motion_download_interface rclcpp)
 target_compile_definitions(motion_download_interface PRIVATE
-  ${simple_message_DEFINITIONS})
+  SIMPLE_MESSAGE_USE_ROS SIMPLE_MESSAGE_LINUX)
 
 # The following executables(nodes) are for applications where the robot
 # controller and pc have different same byte order (i.e. byte swapping IS
@@ -97,7 +97,7 @@ target_link_libraries(robot_state_bswap
   simple_message_bswap)
 ament_target_dependencies(robot_state_bswap rclcpp)
 target_compile_definitions(robot_state_bswap PRIVATE
-  ${simple_message_bswap_DEFINITIONS})
+  SIMPLE_MESSAGE_USE_ROS SIMPLE_MESSAGE_LINUX BYTE_SWAPPING)
 
 add_executable(motion_streaming_interface_bswap
   src/generic_joint_streamer_node.cpp)
@@ -106,7 +106,7 @@ target_link_libraries(motion_streaming_interface_bswap
   simple_message_bswap)
 ament_target_dependencies(motion_streaming_interface_bswap rclcpp)
 target_compile_definitions(motion_streaming_interface_bswap PRIVATE
-  ${simple_message_bswap_DEFINITIONS})
+  SIMPLE_MESSAGE_USE_ROS SIMPLE_MESSAGE_LINUX BYTE_SWAPPING)
 
 add_executable(motion_download_interface_bswap
   src/generic_joint_downloader_node.cpp)
@@ -115,7 +115,7 @@ target_link_libraries(motion_download_interface_bswap
   simple_message_bswap)
 ament_target_dependencies(motion_download_interface_bswap rclcpp)
 target_compile_definitions(motion_download_interface_bswap PRIVATE
-  ${simple_message_bswap_DEFINITIONS})
+  SIMPLE_MESSAGE_USE_ROS SIMPLE_MESSAGE_LINUX BYTE_SWAPPING)
 
 add_executable(joint_trajectory_action
   src/generic_joint_trajectory_action_node.cpp
@@ -160,7 +160,4 @@ install(
 install(DIRECTORY config launch
   DESTINATION share/${PROJECT_NAME})
 
-ament_package(
-  CONFIG_EXTRAS
-    cmake/issue46_workaround.cmake
-)
+ament_package()
