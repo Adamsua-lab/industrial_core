@@ -14,6 +14,8 @@ find_package(industrial_utils REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(simple_message REQUIRED)
 find_package(std_msgs REQUIRED)
+
+include_directories(${simple_message_INCLUDE_DIRS})
 find_package(trajectory_msgs REQUIRED)
 find_package(urdf REQUIRED)
 
